@@ -23,6 +23,11 @@ async fn main() {
 
     let pool = db_connection().await;
 
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to migrate the database");
+
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
