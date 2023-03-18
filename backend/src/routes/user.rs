@@ -1,6 +1,6 @@
-use axum::extract::Path;
 use axum::http::StatusCode;
-use axum::{Extension, Json};
+use axum::Extension;
+use axum::{routing::post, Json, Router};
 use serde::Serialize;
 use serde_with::serde_as;
 use sqlx::PgPool;
@@ -25,6 +25,10 @@ pub struct User {
     pub updated_at: OffsetDateTime,
 }
 
+pub fn routes() -> Router {
+    Router::new().route("/api/users", post(create_user))
+}
+
 pub struct UserCreateRequest {
     email: String,
     username: String,
@@ -45,24 +49,35 @@ async fn create_user(
         req.password
     )
     .execute(&*db)
-    .await
-    .map_err(|e| {
-        println!("Error: {}", e);
-    });
+    .await?;
 
     Ok(StatusCode::CREATED)
 }
 
-async fn get_user(db: Extension<PgPool>, Path(user_id): Path<Uuid>) -> anyhow::Result<Json<User>> {
-    let user = sqlx::query_as!(
-        User,
-        r#"
-	SELECT * FROM "users" WHERE id = $1
-	"#,
-        user_id
-    )
-    .fetch_one(&*db)
-    .await?;
+//async fn get_all_users(db: Extension<PgPool>) -> anyhow::Result<Json<Vec<User>>> {
+//    let users = sqlx::query_as!(
+//        User,
+//        r#"
+//		SELECT * FROM "users"
+//	"#
+//    )
+//    .fetch_all(&*db)
+//    .await?;
 
-    Ok(Json(user))
-}
+//    Ok(Json(users))
+//}
+
+//async fn get_user(db: Extension<PgPool>, Path(user_id): Path<Uuid>) -> anyhow::Result<Json<User>> {
+//    let user = sqlx::query_as!(
+//        User,
+//		// language=PostgreSQL
+//        r#"
+//	SELECT * FROM "users" WHERE id = $1
+//	"#,
+//        user_id
+//    )
+//    .fetch_one(&*db)
+//    .await?;
+
+//    Ok(Json(user))
+//}

@@ -1,12 +1,9 @@
 use std::net::SocketAddr;
 
-use axum::{
-    extract::State,
-    routing::{get, post},
-    Router,
-};
+use anyhow::Context;
+use axum::{extract::State, Extension, Router};
 use hyper::StatusCode;
-use sqlx::{postgres::PgPoolOptions, PgPool, Pool, Postgres};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 mod routes;
@@ -21,7 +18,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let pool = db_connection().await;
+    let pool = db_connection().await.unwrap();
 
     sqlx::migrate!()
         .run(&pool)
@@ -36,11 +33,10 @@ async fn main() {
         .unwrap();
 }
 
-fn app(pool: Pool<Postgres>) -> Router {
+fn app(pool: PgPool) -> Router {
     Router::new()
-        .route("/", get(using_pool_extractor))
-        .route("/users", post(using_pool_extractor))
-        .with_state(pool)
+        .merge(routes::user::routes())
+        .layer(Extension(pool))
 }
 
 async fn using_pool_extractor(State(pool): State<PgPool>) -> Result<String, (StatusCode, String)> {
@@ -50,7 +46,7 @@ async fn using_pool_extractor(State(pool): State<PgPool>) -> Result<String, (Sta
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
-async fn db_connection() -> Pool<Postgres> {
+async fn db_connection() -> anyhow::Result<PgPool> {
     let db_connection = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
 
@@ -58,7 +54,7 @@ async fn db_connection() -> Pool<Postgres> {
         .max_connections(5)
         .connect(&db_connection)
         .await
-        .expect("Failed to connect to Postgres")
+        .context("Failed to connect to Postgres.")
 }
 
 #[cfg(test)]
@@ -73,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn root() {
-        let app = app(db_connection().await);
+        let app = app(db_connection().await.unwrap());
 
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
@@ -87,7 +83,7 @@ mod tests {
 
     #[tokio::test]
     async fn not_found() {
-        let app = app(db_connection().await);
+        let app = app(db_connection().await.unwrap());
 
         let response = app
             .oneshot(
