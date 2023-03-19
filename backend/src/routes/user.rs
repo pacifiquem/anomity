@@ -15,26 +15,26 @@ use crate::Result;
 #[serde_with::serde_as]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct User {
-    pub id: Uuid,
-    pub username: String,
-    pub email: String,
-    pub password: String,
+struct User {
+    id: Uuid,
+    username: String,
+    email: String,
+    password: String,
 
     #[serde_as(as = "Rfc3339")]
-    pub created_at: OffsetDateTime,
+    created_at: OffsetDateTime,
 
     #[serde_as(as = "Rfc3339")]
-    pub updated_at: OffsetDateTime,
+    updated_at: OffsetDateTime,
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/api/users", post(create_user))
+    Router::new().route("/api/users", post(create_user).get(get_all_users))
 }
 
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
-pub struct UserCreateRequest {
+struct UserCreateRequest {
     email: String,
     username: String,
 
@@ -48,7 +48,7 @@ async fn create_user(
 ) -> Result<StatusCode> {
     req.validate()?;
 
-	// TODO: check if user already exists
+    // TODO: check if user already exists
 
     print!("{:?}", req);
     sqlx::query_as!(
@@ -67,18 +67,18 @@ async fn create_user(
     Ok(StatusCode::NO_CONTENT)
 }
 
-//async fn get_all_users(db: Extension<PgPool>) -> Result<Json<Vec<User>>> {
-//    let users = sqlx::query_as!(
-//        User,
-//        r#"
-//		SELECT * FROM "users"
-//	"#
-//    )
-//    .fetch_all(&*db)
-//    .await?;
+async fn get_all_users(db: Extension<PgPool>) -> Result<Json<Vec<User>>> {
+    let users = sqlx::query_as!(
+        User,
+        r#"
+		SELECT * FROM "users"
+	"#
+    )
+    .fetch_all(&*db)
+    .await?;
 
-//    Ok(Json(users))
-//}
+    Ok(Json(users))
+}
 
 //async fn get_user(db: Extension<PgPool>, Path(user_id): Path<Uuid>) -> anyhow::Result<Json<User>> {
 //    let user = sqlx::query_as!(
@@ -91,6 +91,5 @@ async fn create_user(
 //    )
 //    .fetch_one(&*db)
 //    .await?;
-
 //    Ok(Json(user))
 //}
