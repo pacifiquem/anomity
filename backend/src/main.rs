@@ -1,12 +1,16 @@
 use std::net::SocketAddr;
 
 use anyhow::Context;
-use axum::{extract::State, Extension, Router};
-use hyper::StatusCode;
+use axum::{Extension, Router};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
+mod error;
 mod routes;
+
+use error::Error;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[tokio::main]
 async fn main() {
@@ -37,13 +41,6 @@ fn app(pool: PgPool) -> Router {
     Router::new()
         .merge(routes::user::routes())
         .layer(Extension(pool))
-}
-
-async fn using_pool_extractor(State(pool): State<PgPool>) -> Result<String, (StatusCode, String)> {
-    sqlx::query_scalar("SELECT 'Hello, world!'")
-        .fetch_one(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 async fn db_connection() -> anyhow::Result<PgPool> {
