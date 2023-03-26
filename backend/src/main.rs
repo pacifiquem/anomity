@@ -48,8 +48,7 @@ fn app(pool: PgPool) -> Router {
 }
 
 async fn db_connection() -> anyhow::Result<PgPool> {
-    let db_connection = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
+    let db_connection = dotenvy::var("DATABASE_URL").context("Database URL not set.")?;
 
     PgPoolOptions::new()
         .max_connections(5)

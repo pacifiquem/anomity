@@ -19,6 +19,11 @@ uuid = { version = "1.1.2", features = ["serde"] }
 serde_with = { version = "2.0.0", features = ["time_0_3"] }
 validator = { version = "0.16.0", features = ["derive"] }
 thiserror = "1.0.40"
+dotenvy = "0.15.7"
+argon2 = "0.5.0"
+rand = "0.8.5"
+jsonwebtoken = "8.3.0"
+once_cell = "1.17.1"
 
 
 [dev-dependencies]

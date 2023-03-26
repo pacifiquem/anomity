@@ -23,6 +23,18 @@ pub enum Error {
 
     #[error("{0}")]
     Conflict(String),
+
+    #[error("not found")]
+    NotFound(String),
+
+    #[error("{0}")]
+    Unauthorized(String),
+
+    #[error("{0}")]
+    TokenCreation(String),
+	
+	#[error("{0}")]
+	InvalidToken(String),
 }
 
 impl IntoResponse for Error {
@@ -60,9 +72,11 @@ impl Error {
         use Error::*;
 
         match self {
-            Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Sqlx(_) | Anyhow(_) | TokenCreation(_) => StatusCode::INTERNAL_SERVER_ERROR,
             InvalidEntity(_) | UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Conflict(_) => StatusCode::CONFLICT,
+            NotFound(_) => StatusCode::NOT_FOUND,
+            Unauthorized(_)  | InvalidToken(_)=> StatusCode::UNAUTHORIZED,
         }
     }
 }
