@@ -4,8 +4,8 @@ CREATE TABLE messages (
   user_id uuid NOT NULL,
   receiver_id uuid NOT NULL,
   content VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
 );
 
 create index on messages(created_at desc);

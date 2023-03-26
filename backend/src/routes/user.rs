@@ -38,7 +38,7 @@ struct UserCreateRequest {
     email: String,
     username: String,
 
-    #[validate(length(min = 8, max = 32))]
+    #[validate(length(min = 6, max = 32))]
     password: String,
 }
 
@@ -48,9 +48,6 @@ async fn create_user(
 ) -> Result<StatusCode> {
     req.validate()?;
 
-    // TODO: check if user already exists
-
-    print!("{:?}", req);
     sqlx::query_as!(
         User,
         r#"
@@ -64,19 +61,18 @@ async fn create_user(
     .execute(&*db)
     .await?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(StatusCode::CREATED)
 }
 
 async fn get_all_users(db: Extension<PgPool>) -> Result<Json<Vec<User>>> {
     let users = sqlx::query_as!(
         User,
         r#"
-		SELECT * FROM "users"
-	"#
+		SELECT * FROM users
+	    "#
     )
     .fetch_all(&*db)
     .await?;
-
     Ok(Json(users))
 }
 

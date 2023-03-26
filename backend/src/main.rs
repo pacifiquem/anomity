@@ -8,12 +8,12 @@ use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::Subs
 mod error;
 mod routes;
 
-use error::Error;
+use self::error::Error;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -22,19 +22,23 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let pool = db_connection().await.unwrap();
+    let pool = db_connection()
+        .await
+        .context("Failed to connect to database")?;
 
     sqlx::migrate!()
         .run(&pool)
         .await
-        .expect("Failed to migrate the database");
+        .context("Failed to run migrations")?;
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app(pool).into_make_service())
         .await
-        .unwrap();
+        .context("Failed to start server")?;
+
+    Ok(())
 }
 
 fn app(pool: PgPool) -> Router {
