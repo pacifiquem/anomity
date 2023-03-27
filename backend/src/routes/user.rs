@@ -1,12 +1,15 @@
 use anyhow::{anyhow, Context};
 use argon2::{password_hash, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use axum::extract::{Path, FromRequest};
-use axum::http::request::Parts;
-use axum::routing::get;
-use axum::{Extension, async_trait, RequestPartsExt};
-use axum::{routing::post, Json, Router};
-use hyper::StatusCode;
-use jsonwebtoken::{encode, DecodingKey, EncodingKey, Header};
+use async_session::MemoryStore;
+use axum::{
+    async_trait,
+    extract::{Extension, FromRef, FromRequestParts, Path, TypedHeader},
+    headers::{authorization::Bearer, Authorization, Cookie},
+    http::{request::Parts, StatusCode},
+    routing::{get, post},
+    Json, RequestPartsExt, Router,
+};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -21,6 +24,8 @@ use validator::Validate;
 
 use crate::error::Error;
 use crate::Result;
+
+const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 
 struct Keys {
     encoding: EncodingKey,
@@ -58,10 +63,13 @@ struct User {
 }
 
 pub fn routes() -> Router {
+    let store = MemoryStore::new();
+
     Router::new()
         .route("/api/users", post(sign_up).get(get_all_users))
         .route("/api/users/:id", get(get_user))
         .route("/api/users/signin", post(sign_in))
+        .with_state(store)
 }
 
 #[derive(Deserialize, Debug, Validate)]
@@ -82,7 +90,7 @@ struct SingnInRequest {
 }
 
 #[serde_with::serde_as]
-#[derive(Deserialize, Serialize,Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct SignInResponse {
     token: String,
@@ -154,7 +162,7 @@ async fn sign_in(
 
     let claims = Claims {
         sub: user.email,
-        exp: 100000000,
+        exp: (time::OffsetDateTime::now_utc() + time::Duration::days(1)).unix_timestamp() as usize,
     };
 
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
@@ -163,7 +171,7 @@ async fn sign_in(
     Ok(Json(SignInResponse { token }))
 }
 
-async fn get_all_users(db: Extension<PgPool>) -> Result<Json<Vec<User>>> {
+async fn get_all_users(db: Extension<PgPool>, claims: Claims) -> Result<Json<Vec<User>>> {
     let users = sqlx::query_as!(
         User,
         r#"
@@ -172,6 +180,9 @@ async fn get_all_users(db: Extension<PgPool>) -> Result<Json<Vec<User>>> {
     )
     .fetch_all(&*db)
     .await?;
+
+    println!("{:?}", claims);
+
     Ok(Json(users))
 }
 
@@ -223,20 +234,47 @@ pub async fn verify(password: String, hash: String) -> anyhow::Result<bool> {
     .context("panic in verify()")?
 }
 
-
 #[async_trait]
-impl<S> FromRequest<S> for Claims where S: Send + Sync {
-	type Rejection = Error;
+impl<S> FromRequestParts<S> for Claims
+where
+    MemoryStore: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = Error;
 
-	async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-		let TypedHeader(Authorization(bearer)) = parts
-		.extract::<TypedHeader<Authorization<Bearer>>>()
-		.await
-		.map_err(|_| Error::Unauthorized("Missing authorization header".to_string()))?;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let _store = MemoryStore::from_ref(state);
 
-	  let token_data = decode::<Claims>(&bearer.token, &KEYS.decoding, &Validation::default())
-	  .map_err(|_| Error::InvalidToken("Invalid token".to_string()))?;
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .unwrap();
 
-	 Ok(token_data.claims)
-	}
+        let cookie: Option<TypedHeader<Cookie>> = parts.extract().await.unwrap();
+
+        let session_cookie = cookie
+            .as_ref()
+            .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
+
+        if session_cookie.is_none() || bearer.token().is_empty() {
+            return Err(Error::Unauthorized("No session or token".to_string()));
+        }
+
+        if bearer.token().is_empty() {
+            let token_data =
+                decode::<Claims>(&bearer.token(), &KEYS.decoding, &Validation::default())
+                    .map_err(|_| Error::InvalidToken("Invalid token".to_string()))?;
+
+            return Ok(token_data.claims);
+        }
+
+        let token_data = decode::<Claims>(
+            session_cookie.unwrap(),
+            &KEYS.decoding,
+            &Validation::default(),
+        )
+        .map_err(|_| Error::InvalidToken("Invalid token".to_string()))?;
+
+        Ok(token_data.claims)
+    }
 }

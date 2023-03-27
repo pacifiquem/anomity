@@ -32,9 +32,9 @@ pub enum Error {
 
     #[error("{0}")]
     TokenCreation(String),
-	
-	#[error("{0}")]
-	InvalidToken(String),
+
+    #[error("{0}")]
+    InvalidToken(String),
 }
 
 impl IntoResponse for Error {
@@ -76,7 +76,7 @@ impl Error {
             InvalidEntity(_) | UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Conflict(_) => StatusCode::CONFLICT,
             NotFound(_) => StatusCode::NOT_FOUND,
-            Unauthorized(_)  | InvalidToken(_)=> StatusCode::UNAUTHORIZED,
+            Unauthorized(_) | InvalidToken(_) => StatusCode::UNAUTHORIZED,
         }
     }
 }
