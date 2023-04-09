@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import toast from "svelte-french-toast";
   import type { ActionData } from "./$types";
+  import { enhance } from "$app/forms";
 
   export let form: ActionData;
 
@@ -24,7 +25,7 @@
       <h2 class="py-6 text-center text-3xl font-extrabold text-gray-900">
         Sign in to your account
       </h2>
-      <form class="space-y-6" action="?/signin" method="POST">
+      <form class="space-y-6" action="?/signin" method="POST" use:enhance>
         <div>
           <label
             for="email"
