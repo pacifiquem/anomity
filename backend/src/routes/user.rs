@@ -5,10 +5,12 @@ use axum::{
     async_trait,
     extract::{Extension, FromRef, FromRequestParts, Path, TypedHeader},
     headers::{authorization::Bearer, Authorization, Cookie},
-    http::{request::Parts, StatusCode},
+    http::{self, request::Parts},
+    response::IntoResponse,
     routing::{get, post},
     Json, RequestPartsExt, Router,
 };
+use hyper::HeaderMap;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -25,7 +27,7 @@ use validator::Validate;
 use crate::error::Error;
 use crate::Result;
 
-const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
+const AXUM_SESSION_COOKIE_NAME: &str = "session";
 
 struct Keys {
     encoding: EncodingKey,
@@ -75,20 +77,31 @@ pub fn routes() -> Router {
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
 struct SignUpRequest {
-    #[validate(email)]
+    #[validate(email(message = "Email is not valid"))]
     email: String,
 
-    #[validate(length(min = 3, max = 32))]
+    #[validate(length(
+        min = 3,
+        max = 32,
+        message = "Username must be between 3 and 32 characters long"
+    ))]
     username: String,
 
-    #[validate(length(min = 6, max = 32))]
+    #[validate(length(
+        min = 6,
+        max = 32,
+        message = "Password must be between 6 and 32 characters long"
+    ))]
     password: String,
 }
 
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
 struct SingnInRequest {
+    #[validate(email)]
     email: String,
+
+    #[validate(length(min = 6, max = 32))]
     password: String,
 }
 
@@ -105,8 +118,7 @@ struct Claims {
     exp: usize,
 }
 
-async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> Result<StatusCode> {
-  
+async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> impl IntoResponse {
     req.validate()?;
 
     let user = sqlx::query_as!(
@@ -139,13 +151,12 @@ async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> Resul
     .execute(&*db)
     .await?;
 
-    Ok(StatusCode::CREATED)
+    let token = generate_token(req.email);
+
+    Ok(get_cookie_headers(token))
 }
 
-async fn sign_in(
-    db: Extension<PgPool>,
-    Json(req): Json<SingnInRequest>,
-) -> Result<Json<SignInResponse>> {
+async fn sign_in(db: Extension<PgPool>, Json(req): Json<SingnInRequest>) -> impl IntoResponse {
     req.validate()?;
 
     let user = sqlx::query_as!(
@@ -158,7 +169,7 @@ async fn sign_in(
     .fetch_one(&*db)
     .await
     .map_err(|e| match e {
-        sqlx::Error::RowNotFound => Error::NotFound("User not found".to_string()),
+        sqlx::Error::RowNotFound => Error::NotFound("Invalid credentials".to_string()),
         _ => Error::Sqlx(e),
     })?;
 
@@ -168,18 +179,39 @@ async fn sign_in(
         return Err(Error::Unauthorized("Invalid credentials".to_string()));
     }
 
+    let token = generate_token(user.email);
+
+    Ok(get_cookie_headers(token))
+}
+
+fn generate_token(email: String) -> String {
     let claims = Claims {
-        sub: user.email,
+        sub: email,
         exp: (time::OffsetDateTime::now_utc() + time::Duration::days(1)).unix_timestamp() as usize,
     };
 
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
-        .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))?;
+        .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))
+        .unwrap();
 
-    Ok(Json(SignInResponse { token }))
+	token
 }
 
-async fn get_all_users(db: Extension<PgPool>, claims: Claims) -> Result<Json<Vec<User>>> {
+fn get_cookie_headers(token: String) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+
+    headers.insert(
+		http::header::SET_COOKIE,
+		http::header::HeaderValue::from_str(&format!(
+			"{}={}; Path=/; HttpOnly=true; SameSite=Strict; max-age=86400;sameSite=strict; sameSite=lax; path=/",
+			AXUM_SESSION_COOKIE_NAME, token
+		)).unwrap()
+	);
+
+	headers
+}
+
+async fn get_all_users(db: Extension<PgPool>, _claims: Claims) -> Result<Json<Vec<User>>> {
     let users = sqlx::query_as!(
         User,
         r#"
@@ -188,8 +220,6 @@ async fn get_all_users(db: Extension<PgPool>, claims: Claims) -> Result<Json<Vec
     )
     .fetch_all(&*db)
     .await?;
-
-    println!("{:?}", claims);
 
     Ok(Json(users))
 }
