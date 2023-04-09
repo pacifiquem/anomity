@@ -75,7 +75,10 @@ pub fn routes() -> Router {
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
 struct SignUpRequest {
+    #[validate(email)]
     email: String,
+
+    #[validate(length(min = 3, max = 32))]
     username: String,
 
     #[validate(length(min = 6, max = 32))]
@@ -103,6 +106,7 @@ struct Claims {
 }
 
 async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> Result<StatusCode> {
+  
     req.validate()?;
 
     let user = sqlx::query_as!(
@@ -152,7 +156,11 @@ async fn sign_in(
         req.email
     )
     .fetch_one(&*db)
-    .await?;
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => Error::NotFound("User not found".to_string()),
+        _ => Error::Sqlx(e),
+    })?;
 
     let is_valid = verify(req.password, user.password).await?;
 

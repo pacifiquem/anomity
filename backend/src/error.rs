@@ -24,7 +24,7 @@ pub enum Error {
     #[error("{0}")]
     Conflict(String),
 
-    #[error("not found")]
+    #[error("{0}")]
     NotFound(String),
 
     #[error("{0}")]
@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("{0}")]
     InvalidToken(String),
+
+    #[error("{0}")]
+    Validation(String),
 }
 
 impl IntoResponse for Error {
@@ -77,6 +80,7 @@ impl Error {
             Conflict(_) => StatusCode::CONFLICT,
             NotFound(_) => StatusCode::NOT_FOUND,
             Unauthorized(_) | InvalidToken(_) => StatusCode::UNAUTHORIZED,
+            Validation(_) => StatusCode::BAD_REQUEST,
         }
     }
 }
