@@ -4,7 +4,7 @@ use async_session::MemoryStore;
 use axum::{
     async_trait,
     extract::{Extension, FromRef, FromRequestParts, Path, TypedHeader},
-    headers::{authorization::Bearer, Authorization, Cookie},
+    headers::Cookie,
     http::{self, request::Parts},
     response::IntoResponse,
     routing::{get, post},
@@ -26,6 +26,7 @@ use validator::Validate;
 
 use crate::error::Error;
 use crate::Result;
+use cookie::{Cookie as CookieUtils, SameSite};
 
 const AXUM_SESSION_COOKIE_NAME: &str = "session";
 
@@ -49,7 +50,7 @@ static KEYS: Lazy<Keys> = Lazy::new(|| {
 });
 
 #[serde_with::serde_as]
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct User {
     id: Uuid,
@@ -71,6 +72,7 @@ pub fn routes() -> Router {
         .route("/api/users", post(sign_up).get(get_all_users))
         .route("/api/users/:id", get(get_user))
         .route("/api/users/signin", post(sign_in))
+        .route("/api/users/me", get(get_current_user))
         .with_state(store)
 }
 
@@ -98,10 +100,14 @@ struct SignUpRequest {
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
 struct SingnInRequest {
-    #[validate(email)]
+    #[validate(email(message = "Email is not valid"))]
     email: String,
 
-    #[validate(length(min = 6, max = 32))]
+    #[validate(length(
+        min = 6,
+        max = 32,
+        message = "Password must be between 6 and 32 characters long"
+    ))]
     password: String,
 }
 
@@ -194,21 +200,43 @@ fn generate_token(email: String) -> String {
         .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))
         .unwrap();
 
-	token
+    token
+}
+
+async fn get_current_user(db: Extension<PgPool>, claims: Claims) -> Result<Json<User>> {
+    let user = sqlx::query_as!(
+        User,
+        r#"
+		SELECT * FROM "users" WHERE email = $1
+	"#,
+        claims.sub
+    )
+    .fetch_one(&*db)
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => Error::NotFound("Invalid credentials".to_string()),
+        _ => Error::Sqlx(e),
+    })?;
+
+    Ok(Json(user))
 }
 
 fn get_cookie_headers(token: String) -> HeaderMap {
     let mut headers = HeaderMap::new();
 
-    headers.insert(
-		http::header::SET_COOKIE,
-		http::header::HeaderValue::from_str(&format!(
-			"{}={}; Path=/; HttpOnly=true; SameSite=Strict; max-age=86400;sameSite=strict; sameSite=lax; path=/",
-			AXUM_SESSION_COOKIE_NAME, token
-		)).unwrap()
-	);
+    let cookie = CookieUtils::build(AXUM_SESSION_COOKIE_NAME, token)
+        .path("/")
+        .http_only(true)
+        .max_age(time::Duration::days(1))
+        .same_site(SameSite::Lax)
+        .finish()
+        .to_string();
 
-	headers
+    headers.insert(
+        http::header::SET_COOKIE,
+        cookie.to_string().parse().unwrap(),
+    );
+    headers
 }
 
 async fn get_all_users(db: Extension<PgPool>, _claims: Claims) -> Result<Json<Vec<User>>> {
@@ -283,27 +311,14 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let _store = MemoryStore::from_ref(state);
 
-        let TypedHeader(Authorization(bearer)) = parts
-            .extract::<TypedHeader<Authorization<Bearer>>>()
-            .await
-            .unwrap();
-
         let cookie: Option<TypedHeader<Cookie>> = parts.extract().await.unwrap();
 
         let session_cookie = cookie
             .as_ref()
             .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
 
-        if session_cookie.is_none() || bearer.token().is_empty() {
+        if session_cookie.is_none() {
             return Err(Error::Unauthorized("No session or token".to_string()));
-        }
-
-        if bearer.token().is_empty() {
-            let token_data =
-                decode::<Claims>(&bearer.token(), &KEYS.decoding, &Validation::default())
-                    .map_err(|_| Error::InvalidToken("Invalid token".to_string()))?;
-
-            return Ok(token_data.claims);
         }
 
         let token_data = decode::<Claims>(

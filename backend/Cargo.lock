@@ -187,6 +187,7 @@ dependencies = [
  "argon2",
  "async-session",
  "axum",
+ "cookie",
  "dotenvy",
  "hyper",
  "jsonwebtoken",
@@ -345,6 +346,16 @@ name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
+
+[[package]]
+name = "cookie"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7efb37c3e1ccb1ff97164ad95ac1606e8ccd35b3fa0a7d99a304c7f4a428cc24"
+dependencies = [
+ "time",
+ "version_check",
+]
 
 [[package]]
 name = "core-foundation-sys"
