@@ -318,7 +318,7 @@ where
             .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
 
         if session_cookie.is_none() {
-            return Err(Error::Unauthorized("No session or token".to_string()));
+            return Err(Error::Unauthorized("Invalid token".to_string()));
         }
 
         let token_data = decode::<Claims>(

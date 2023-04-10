@@ -13,5 +13,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return await resolve(event)
 	}
 
+	const user = await fetch(`${process.env.BACKEND_BASE_URL}/users/me`)
+
+	event.locals.user = await user.json()
+
 	return await resolve(event)
 }
