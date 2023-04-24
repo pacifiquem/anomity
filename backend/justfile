@@ -1,5 +1,9 @@
 run:
    cargo watch -q -c -w src/ -x run
 
+
+migrate: 
+	sqlx migrate run 
+
 default:
     echo 'Hello, world!'
