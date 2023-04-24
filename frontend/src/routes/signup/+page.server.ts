@@ -8,6 +8,8 @@ export const actions = {
 		const formData = await request.formData()
 		const data = Object.fromEntries(formData.entries())
 
+		console.log({ data })
+
 		const signup_response = await fetch(`${BACKEND_BASE_URL}/users`, {
 			method: "POST",
 			headers: {
