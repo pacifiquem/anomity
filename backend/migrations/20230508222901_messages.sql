@@ -1,4 +1,5 @@
 -- Add migration script here
+-- Add migration script here
 CREATE TABLE messages (
   id       uuid primary key default gen_random_uuid(),
   user_id uuid NOT NULL,
