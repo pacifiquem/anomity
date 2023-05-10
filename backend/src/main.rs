@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Failed to run migrations")?;
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8090));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app(pool).into_make_service())
