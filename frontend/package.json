@@ -13,26 +13,26 @@
 		"lint": "eslint ."
 	},
 	"devDependencies": {
-		"@playwright/test": "^1.33.0",
-		"@sveltejs/adapter-auto": "^2.0.1",
-		"@sveltejs/kit": "^1.16.3",
-		"@typescript-eslint/eslint-plugin": "^5.59.5",
-		"@typescript-eslint/parser": "^5.59.5",
+		"@playwright/test": "^1.35.1",
+		"@sveltejs/adapter-auto": "^2.1.0",
+		"@sveltejs/kit": "^1.21.0",
+		"@typescript-eslint/eslint-plugin": "^5.61.0",
+		"@typescript-eslint/parser": "^5.61.0",
 		"autoprefixer": "^10.4.14",
-		"eslint": "^8.40.0",
+		"eslint": "^8.44.0",
 		"eslint-plugin-svelte3": "^4.0.0",
-		"postcss": "^8.4.23",
-		"svelte": "^3.59.1",
-		"svelte-check": "^3.3.2",
+		"postcss": "^8.4.24",
+		"svelte": "^4.0.3",
+		"svelte-check": "^3.4.4",
 		"tailwindcss": "^3.3.2",
-		"tslib": "^2.5.0",
-		"typescript": "^5.0.4",
-		"vite": "^4.3.5",
-		"vitest": "^0.31.0"
+		"tslib": "^2.6.0",
+		"typescript": "^5.1.6",
+		"vite": "^4.3.9",
+		"vitest": "^0.32.4"
 	},
 	"type": "module",
 	"dependencies": {
 		"@tailwindcss/forms": "^0.5.3",
-		"svelte-french-toast": "1.0.4-beta.0"
+		"svelte-french-toast": "1.1.0"
 	}
 }
