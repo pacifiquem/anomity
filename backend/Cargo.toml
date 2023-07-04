@@ -14,16 +14,16 @@ hyper = { version = "0.14", features = ["full"] }
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "time", "uuid"] }
 time = "0.3.11"
 anyhow = "1.0"
-serde = "1.0.158"
-uuid = { version = "1.1.2", features = ["serde"] }
-serde_with = { version = "2.0.0", features = ["time_0_3"] }
+serde = "1.0.163"
+uuid = { version = "1.3.3", features = ["serde"] }
+serde_with = { version = "3.0.0", features = ["time_0_3"] }
 validator = { version = "0.16.0", features = ["derive"] }
 thiserror = "1.0.40"
 dotenvy = "0.15.7"
 argon2 = "0.5.0"
 rand = "0.8.5"
 jsonwebtoken = "8.3.0"
-once_cell = "1.17.1"
+once_cell = "1.18.0"
 async-session = "3.0.0"
 cookie = "0.17.0"
 
