@@ -1,34 +1,32 @@
 use anyhow::{anyhow, Context};
 use argon2::{password_hash, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use async_session::MemoryStore;
+use async_session::{async_trait, MemoryStore};
 use axum::{
-    async_trait,
-    extract::{Extension, FromRef, FromRequestParts, Path, TypedHeader},
-    headers::Cookie,
-    http::{self, request::Parts},
+    extract::{Extension, FromRef, FromRequestParts, Path},
+    http::request::Parts,
     response::IntoResponse,
     routing::{get, post},
-    Json, RequestPartsExt, Router,
+    Json, Router,
 };
-use hyper::HeaderMap;
+//use hyper::HeaderMap;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sqlx::PgPool;
 use tokio::task;
+use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
 
 use argon2::password_hash::SaltString;
 use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use validator::Validate;
 
 use crate::error::Error;
 use crate::Result;
-use cookie::{Cookie as CookieUtils, SameSite};
 
-const AXUM_SESSION_COOKIE_NAME: &str = "session";
+const COOKIE_NAME: &str = "session";
 
 struct Keys {
     encoding: EncodingKey,
@@ -71,9 +69,10 @@ pub fn routes() -> Router {
     Router::new()
         .route("/api/users", post(sign_up).get(get_all_users))
         .route("/api/users/:id", get(get_user))
-        .route("/api/users/signin", post(sign_in))
+        .route("/api/users/login", post(login))
         .route("/api/users/me", get(get_current_user))
         .with_state(store)
+    //.layer(CookieManagerLayer::new())
 }
 
 #[derive(Deserialize, Debug, Validate)]
@@ -99,7 +98,7 @@ struct SignUpRequest {
 
 #[derive(Deserialize, Debug, Validate)]
 #[serde(rename_all = "camelCase")]
-struct SingnInRequest {
+struct SignInRequest {
     #[validate(email(message = "Email is not valid"))]
     email: String,
 
@@ -159,10 +158,14 @@ async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> impl 
 
     let token = generate_token(req.email);
 
-    Ok(get_cookie_headers(token))
+    Ok(token)
 }
 
-async fn sign_in(db: Extension<PgPool>, Json(req): Json<SingnInRequest>) -> impl IntoResponse {
+async fn login(
+    db: Extension<PgPool>,
+    cookies: Cookies,
+    Json(req): Json<SignInRequest>,
+) -> Result<&'static str, Error> {
     req.validate()?;
 
     let user = sqlx::query_as!(
@@ -187,13 +190,25 @@ async fn sign_in(db: Extension<PgPool>, Json(req): Json<SingnInRequest>) -> impl
 
     let token = generate_token(user.email);
 
-    Ok(get_cookie_headers(token))
+    let mut now = OffsetDateTime::now_utc();
+
+    now += Duration::weeks(1);
+
+    let mut cookie = Cookie::new(COOKIE_NAME, token);
+
+    cookie.set_expires(now);
+    //cookie.set_same_site(SameSite::Lax);
+    cookie.set_path("/");
+
+    cookies.add(cookie);
+
+    Ok("Logged in")
 }
 
 fn generate_token(email: String) -> String {
     let claims = Claims {
         sub: email,
-        exp: (time::OffsetDateTime::now_utc() + time::Duration::days(1)).unix_timestamp() as usize,
+        exp: (time::OffsetDateTime::now_utc() + time::Duration::weeks(1)).unix_timestamp() as usize,
     };
 
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
@@ -219,24 +234,6 @@ async fn get_current_user(db: Extension<PgPool>, claims: Claims) -> Result<Json<
     })?;
 
     Ok(Json(user))
-}
-
-fn get_cookie_headers(token: String) -> HeaderMap {
-    let mut headers = HeaderMap::new();
-
-    let cookie = CookieUtils::build(AXUM_SESSION_COOKIE_NAME, token)
-        .path("/")
-        .http_only(true)
-        .max_age(time::Duration::days(1))
-        .same_site(SameSite::Lax)
-        .finish()
-        .to_string();
-
-    headers.insert(
-        http::header::SET_COOKIE,
-        cookie.to_string().parse().unwrap(),
-    );
-    headers
 }
 
 async fn get_all_users(db: Extension<PgPool>, _claims: Claims) -> Result<Json<Vec<User>>> {
@@ -308,21 +305,24 @@ where
 {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let _store = MemoryStore::from_ref(state);
 
-        let cookie: Option<TypedHeader<Cookie>> = parts.extract().await.unwrap();
+        let cookies = Cookies::from_request_parts(req, state)
+            .await
+            .map_err(|_| Error::Unauthorized("Failed to get cookie".to_string()))?;
 
-        let session_cookie = cookie
-            .as_ref()
-            .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
+        let session_cookie: String = cookies
+            .get(COOKIE_NAME)
+            .and_then(|c| c.value().parse().ok())
+            .ok_or_else(|| Error::Unauthorized("Invalid token".to_string()))?;
 
-        if session_cookie.is_none() {
+        if session_cookie.is_empty() {
             return Err(Error::Unauthorized("Invalid token".to_string()));
         }
 
         let token_data = decode::<Claims>(
-            session_cookie.unwrap(),
+            session_cookie.as_str(),
             &KEYS.decoding,
             &Validation::default(),
         )

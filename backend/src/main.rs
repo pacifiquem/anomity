@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use anyhow::Context;
 use axum::{Extension, Router};
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use tower_cookies::CookieManagerLayer;
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 mod error;
@@ -45,6 +46,7 @@ fn app(pool: PgPool) -> Router {
     Router::new()
         .merge(routes::user::routes())
         .layer(Extension(pool))
+        .layer(CookieManagerLayer::new())
 }
 
 async fn db_connection() -> anyhow::Result<PgPool> {

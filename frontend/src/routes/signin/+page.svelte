@@ -1,20 +1,11 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import toast from "svelte-french-toast";
-  import type { ActionData } from "./$types";
   import { enhance } from "$app/forms";
-
-  export let form: ActionData;
-
-  onMount(() => {
-    if (form?.signin_error) {
-      toast.error(form.signin_error);
-    }
-  });
+  import { goto } from "$app/navigation";
 </script>
 
 <svelte:head>
-  <title>signin</title>
+  <title>login</title>
 </svelte:head>
 
 <div
@@ -25,7 +16,18 @@
       <h2 class="py-6 text-center text-3xl font-extrabold text-gray-900">
         Sign in to your account
       </h2>
-      <form class="space-y-6" action="?/signin" method="POST" use:enhance>
+      <form
+        class="space-y-6"
+        action="?/login"
+        method="POST"
+        use:enhance={() => {
+          return async ({ result }) => {
+            if (result.type === "error") toast.error(result.error.message);
+
+            if (result.type === "redirect") goto(result.location);
+          };
+        }}
+      >
         <div>
           <label
             for="email"

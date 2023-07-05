@@ -57,8 +57,6 @@ impl IntoResponse for Error {
             _ => None,
         };
 
-        println!("errors: {:?}", self);
-
         (
             self.status_code(),
             Json(ErrorResponse {

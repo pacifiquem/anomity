@@ -1,13 +1,13 @@
-import { redirect } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 import { BACKEND_BASE_URL } from "../../utils/constants";
 import type { Actions } from "./$types";
 
 export const actions: Actions = {
-  signin: async ({ request, cookies }) => {
+  login: async ({ request }) => {
     const form_data = await request.formData();
     const request_body = Object.fromEntries(form_data.entries());
 
-    const signin_request = await fetch(`${BACKEND_BASE_URL}/users/signin`, {
+    const login_request = await fetch(`${BACKEND_BASE_URL}/users/login`, {
       method: "POST",
       body: JSON.stringify(request_body),
       headers: {
@@ -15,20 +15,11 @@ export const actions: Actions = {
       },
     });
 
-    if (!signin_request.ok) {
-      return {
-        signin_error: (await signin_request.json()).message,
-      };
+    if (!login_request.ok) {
+      throw error(400, {
+        message: (await login_request.json()).message,
+      });
     }
-
-    //console.log(signin_request.headers.get("set-cookie")!)
-
-    //TODO: remove session="" string from cookie
-    cookies.set(
-      "session",
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      cookies.serialize("session", signin_request.headers.get("set-cookie")!)
-    );
 
     throw redirect(301, "/");
   },
