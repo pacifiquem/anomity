@@ -1,27 +1,33 @@
 import type { Actions } from "./$types";
 import { BACKEND_BASE_URL } from "../../utils/constants";
-import { redirect } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 
 /** @type {import('./$types').Actions} */
 export const actions = {
-	signup: async ({ request }) => {
+	signup: async ({ request, cookies }) => {
 		const formData = await request.formData()
-		const data = Object.fromEntries(formData.entries())
-
-		console.log({ data })
+		
 
 		const signup_response = await fetch(`${BACKEND_BASE_URL}/users`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify(data),
+			body: JSON.stringify(Object.fromEntries(formData.entries())),
 		})
 
-		if (!signup_response.ok)
-			return {
-				signup_error: (await signup_response.json()).message,
-			}
+		if (!signup_response.ok) {
+			const response = await signup_response.json()
+			throw  error(400,{
+				message: response.message,
+			})
+		}
+			
+		cookies.set("sessionId", await signup_response.text(), {
+			path: "/"
+		})
+
+
 		throw redirect(303, "/")
 	}
 } satisfies Actions

@@ -21,6 +21,9 @@ export const actions: Actions = {
       });
     }
 
+	console.log(login_request.headers);
+	console.log("login_request", await login_request.json());
+
     throw redirect(301, "/");
   },
 };

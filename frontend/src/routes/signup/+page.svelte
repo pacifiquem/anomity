@@ -1,3 +1,9 @@
+<script>
+  import { enhance } from "$app/forms";
+  import { goto } from "$app/navigation";
+  import toast from "svelte-french-toast";
+</script>
+
 <svelte:head>
   <title>signup</title>
 </svelte:head>
@@ -10,7 +16,17 @@
       <h2 class="py-6 text-center text-3xl font-extrabold text-gray-900">
         Sign up to your account
       </h2>
-      <form class="space-y-6" action="?/signup" method="POST">
+      <form
+        class="space-y-6"
+        action="?/signup"
+        method="POST"
+        use:enhance={() => {
+          return async ({ result }) => {
+            if (result.type === "error") toast.error(result.error.message);
+            if (result.type === "redirect") goto(result.location);
+          };
+        }}
+      >
         <div>
           <label
             for="username"
