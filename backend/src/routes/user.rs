@@ -8,25 +8,23 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-//use hyper::HeaderMap;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sqlx::PgPool;
 use tokio::task;
-use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
 
 use argon2::password_hash::SaltString;
 use time::format_description::well_known::Rfc3339;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use validator::Validate;
 
 use crate::error::Error;
 use crate::Result;
 
-const COOKIE_NAME: &str = "session";
+//const COOKIE_NAME: &str = "session";
 
 struct Keys {
     encoding: EncodingKey,
@@ -72,7 +70,6 @@ pub fn routes() -> Router {
         .route("/api/users/login", post(login))
         .route("/api/users/me", get(get_current_user))
         .with_state(store)
-    //.layer(CookieManagerLayer::new())
 }
 
 #[derive(Deserialize, Debug, Validate)]
@@ -163,15 +160,15 @@ async fn sign_up(db: Extension<PgPool>, Json(req): Json<SignUpRequest>) -> impl 
 
 async fn login(
     db: Extension<PgPool>,
-    cookies: Cookies,
+    //cookies: Cookies,
     Json(req): Json<SignInRequest>,
-) -> Result<&'static str, Error> {
+) -> Result<String, Error> {
     req.validate()?;
 
     let user = sqlx::query_as!(
         User,
         r#"
-		SELECT * FROM "users" WHERE email = $1
+		SELECT * FROM users WHERE email = $1
 	"#,
         req.email
     )
@@ -190,19 +187,19 @@ async fn login(
 
     let token = generate_token(user.email);
 
-    let mut now = OffsetDateTime::now_utc();
+    //let mut now = OffsetDateTime::now_utc();
 
-    now += Duration::weeks(1);
+    //now += Duration::weeks(1);
 
-    let mut cookie = Cookie::new(COOKIE_NAME, token);
+    //let mut cookie = Cookie::new(COOKIE_NAME, token);
 
-    cookie.set_expires(now);
-    //cookie.set_same_site(SameSite::Lax);
-    cookie.set_path("/");
+    //cookie.set_expires(now);
+    ////cookie.set_same_site(SameSite::Lax);
+    //cookie.set_path("/");
 
-    cookies.add(cookie);
+    //cookies.add(cookie);
 
-    Ok("Logged in")
+    Ok(token)
 }
 
 fn generate_token(email: String) -> String {
@@ -308,21 +305,24 @@ where
     async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let _store = MemoryStore::from_ref(state);
 
-        let cookies = Cookies::from_request_parts(req, state)
-            .await
-            .map_err(|_| Error::Unauthorized("Failed to get cookie".to_string()))?;
+        let bearer = "Bearer ";
 
-        let session_cookie: String = cookies
-            .get(COOKIE_NAME)
-            .and_then(|c| c.value().parse().ok())
-            .ok_or_else(|| Error::Unauthorized("Invalid token".to_string()))?;
+        let authorization_header = match req.headers.get("authorization") {
+            Some(v) => v,
+            None => return Err(Error::Unauthorized("Invalid token".to_string())),
+        };
 
-        if session_cookie.is_empty() {
+        let authorization = match authorization_header.to_str() {
+            Ok(v) => v,
+            Err(_) => return Err(Error::Unauthorized("Invalid token".to_string())),
+        };
+
+        if !authorization.starts_with(bearer) {
             return Err(Error::Unauthorized("Invalid token".to_string()));
-        }
+        };
 
         let token_data = decode::<Claims>(
-            session_cookie.as_str(),
+            authorization.trim_start_matches(bearer),
             &KEYS.decoding,
             &Validation::default(),
         )

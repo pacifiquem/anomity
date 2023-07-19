@@ -3,7 +3,7 @@ import { BACKEND_BASE_URL } from "../../utils/constants";
 import type { Actions } from "./$types";
 
 export const actions: Actions = {
-  login: async ({ request }) => {
+  login: async ({ request, cookies }) => {
     const form_data = await request.formData();
     const request_body = Object.fromEntries(form_data.entries());
 
@@ -20,9 +20,10 @@ export const actions: Actions = {
         message: (await login_request.json()).message,
       });
     }
-
-	console.log(login_request.headers);
-	console.log("login_request", await login_request.json());
+	
+	cookies.set("sessionId", await login_request.text(), {
+		path: "/",
+	})
 
     throw redirect(301, "/");
   },
