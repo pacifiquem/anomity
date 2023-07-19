@@ -1,6 +1,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import { BACKEND_BASE_URL } from "../../utils/constants";
 import type { Actions } from "./$types";
+import { dev } from "$app/environment";
 
 export const actions: Actions = {
   login: async ({ request, cookies }) => {
@@ -23,6 +24,9 @@ export const actions: Actions = {
 	
 	cookies.set("sessionId", await login_request.text(), {
 		path: "/",
+		secure: !dev,
+		sameSite: "strict",
+		httpOnly: true 
 	})
 
     throw redirect(301, "/");

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { page } from "$app/stores";
+  import { user } from "../lib/auth";
 </script>
 
-{#if $page.data.user}
-  <h1>Welcome</h1>
+{#if $user}
+  <h1>Welcome {$user.username}</h1>
 {/if}
