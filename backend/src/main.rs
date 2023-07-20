@@ -1,20 +1,37 @@
 use std::net::SocketAddr;
 
 use anyhow::Context;
-use axum::{Extension, Router};
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use axum::{routing::get, Router};
+use sqlx::PgPool;
+use tokio::signal::unix::SignalKind;
 use tower_cookies::CookieManagerLayer;
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
+mod api;
+mod db;
 mod error;
+mod models;
 mod routes;
+
+use crate::db::connect_pg;
 
 use self::error::Error;
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
+#[derive(Clone)]
+pub struct AppState {
+    /// The secret to encrypt the JWT
+    pub jwt_secret: String,
+
+    /// The database connection pool
+    pub pg_pool: PgPool,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -23,83 +40,45 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let pool = db_connection()
+    let pg_pool = connect_pg()
         .await
         .context("Failed to connect to database")?;
 
+    let jwt_secret = dotenvy::var("JWT_SECRET").context("JWT_SECRET not set")?;
+
     sqlx::migrate!()
-        .run(&pool)
+        .run(&pg_pool)
         .await
         .context("Failed to run migrations")?;
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8090));
+    let state = AppState {
+        jwt_secret,
+        pg_pool,
+    };
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8090));
+
     tracing::debug!("listening on {}", addr);
+
+    let app = Router::new()
+        .route("/", get(|| async { "Hello, world!" }))
+        .nest("/api/users", routes::user::routes(state));
+
     axum::Server::bind(&addr)
-        .serve(app(pool).into_make_service())
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(async {
+            let mut sigterm = tokio::signal::unix::signal(SignalKind::terminate()).unwrap();
+            let mut sigkill = tokio::signal::unix::signal(SignalKind::interrupt()).unwrap();
+
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {},
+                _ = sigterm.recv() => {},
+                _ = sigkill.recv() => {},
+            }
+            tracing::info!("Received signal, starting graceful shutdown");
+        })
         .await
         .context("Failed to start server")?;
 
     Ok(())
-}
-
-fn app(pool: PgPool) -> Router {
-    Router::new()
-        .merge(routes::user::routes())
-        .layer(Extension(pool))
-        .layer(CookieManagerLayer::new())
-}
-
-async fn db_connection() -> anyhow::Result<PgPool> {
-    let db_connection = dotenvy::var("DATABASE_URL").context("Database URL not set.")?;
-
-    PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&db_connection)
-        .await
-        .context("Failed to connect to Postgres.")
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use axum::{
-        body::Body,
-        http::{Request, StatusCode},
-    };
-    use tower::ServiceExt; // for `oneshot`
-
-    #[tokio::test]
-    async fn root() {
-        let app = app(db_connection().await.unwrap());
-
-        let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&body[..], b"Hello, world!");
-    }
-
-    #[tokio::test]
-    async fn not_found() {
-        let app = app(db_connection().await.unwrap());
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/not-found")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-        assert!(body.is_empty());
-    }
 }
