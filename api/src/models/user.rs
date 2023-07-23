@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sqlx::PgPool;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -20,30 +19,6 @@ pub struct User {
 
     #[serde_as(as = "Rfc3339")]
     pub updated_at: OffsetDateTime,
-}
-
-impl User {
-    pub async fn find_by_id(id: Uuid, pool: &PgPool) -> Option<Self> {
-        sqlx::query_as!(Self, "SELECT * FROM users WHERE id=$1", id)
-            .fetch_optional(pool)
-            .await
-            .unwrap()
-    }
-
-    pub async fn get_all_users(pool: &PgPool) -> Vec<Self> {
-        sqlx::query_as!(Self, "SELECT * FROM users")
-            .fetch_all(pool)
-            .await
-            .unwrap()
-    }
-
-    //pub async fn create_user(
-    //    username: &str,
-    //    email: &str,
-    //    password: &str,
-    //    pool: &PgPool,
-    //) -> Option<Self> {
-    //}
 }
 
 #[derive(Deserialize, Debug, Validate)]

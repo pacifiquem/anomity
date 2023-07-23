@@ -4,7 +4,6 @@ use anyhow::Context;
 use axum::{routing::get, Router};
 use sqlx::PgPool;
 use tokio::signal::unix::SignalKind;
-use tower_cookies::CookieManagerLayer;
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 mod api;

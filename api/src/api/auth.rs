@@ -3,16 +3,16 @@ use argon2::{
     password_hash::{self, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
 };
-use axum::{Extension, Json};
+use axum::{extract::State, Json};
 use jsonwebtoken::{encode, DecodingKey, EncodingKey, Header};
 use once_cell::sync::Lazy;
-use sqlx::PgPool;
 use tokio::task;
 use validator::Validate;
 
 use crate::{
     error::Error,
     models::{Claims, SignInRequest, User},
+    AppState,
 };
 
 pub struct Keys {
@@ -34,32 +34,23 @@ pub static KEYS: Lazy<Keys> = Lazy::new(|| {
     Keys::new(secret.as_bytes())
 });
 
-pub async fn login(db: Extension<PgPool>, Json(req): Json<SignInRequest>) -> Result<String, Error> {
+pub async fn login(db: State<AppState>, Json(req): Json<SignInRequest>) -> Result<String, Error> {
     req.validate()?;
 
-    let user = sqlx::query_as!(
-        User,
-        r#"
-		SELECT * FROM users WHERE email = $1
-	"#,
-        req.email
-    )
-    .fetch_one(&*db)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => Error::NotFound("Invalid credentials".to_string()),
-        _ => Error::Sqlx(e),
-    })?;
+    let user = User::get_by_email(&req.email, &db.pg_pool).await;
 
-    let is_valid = verify(req.password, user.password).await?;
+    if let Some(user) = user {
+        let is_valid = verify(req.password, user.password).await?;
+        if !is_valid {
+            return Err(Error::Unauthorized("Invalid credentials".to_string()));
+        }
 
-    if !is_valid {
-        return Err(Error::Unauthorized("Invalid credentials".to_string()));
+        let token = generate_token(user.email);
+
+        return Ok(token);
     }
 
-    let token = generate_token(user.email);
-
-    Ok(token)
+    Err(Error::Unauthorized(String::from("Invalid credentials")))
 }
 
 pub async fn verify(password: String, hash: String) -> anyhow::Result<bool> {

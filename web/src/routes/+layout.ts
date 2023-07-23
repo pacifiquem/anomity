@@ -1,5 +1,7 @@
-export const load = async function ({data}) {
+import type { User } from "../types/user"
+
+export const load = async function ({ data }: { data: { user: User } }) {
 	return {
-		user: data.user 
+		user: data.user
 	}
 }
