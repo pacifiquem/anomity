@@ -2,8 +2,7 @@ import {defineConfig} from "unocss"
 import extractorSvelte from "@unocss/extractor-svelte"
 import presetIcons from "@unocss/preset-icons"
 import presetUno from "@unocss/preset-uno"
-//import presetReset from "@unocss/reset/tailwind.css"
-
+import presetWebFonts from '@unocss/preset-web-fonts'
 
 export default defineConfig({
 	extractors: [
@@ -12,5 +11,11 @@ export default defineConfig({
 	presets: [
 		presetUno(),
 		presetIcons(),
+		presetWebFonts({
+			provider: "google",
+			fonts: {
+				sans: "Karla"
+			}
+		})
 	]
 })

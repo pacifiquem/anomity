@@ -1,5 +1,5 @@
 use crate::{
-    api::{generate_token, hash, login, KEYS},
+    api::{generate_token, hash, KEYS},
     models::{Claims, SignUpRequest, User},
     AppState,
 };
@@ -7,8 +7,7 @@ use async_session::async_trait;
 use axum::{
     extract::{FromRequestParts, Path, State},
     response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
+    Json,
 };
 
 use hyper::http::request::Parts;
@@ -19,16 +18,7 @@ use validator::Validate;
 use crate::error::Error;
 use crate::Result;
 
-pub fn routes<S>(state: AppState) -> Router<S> {
-    Router::new()
-        .route("/", get(get_all_users).post(create))
-        .route("/:id", get(get_user))
-        .route("/login", post(login))
-        .route("/me", get(get_current_user))
-        .with_state(state)
-}
-
-async fn create(state: State<AppState>, Json(req): Json<SignUpRequest>) -> impl IntoResponse {
+pub async fn create(state: State<AppState>, Json(req): Json<SignUpRequest>) -> impl IntoResponse {
     req.validate()?;
 
     let user = User::get_by_email(&req.email, &state.pg_pool).await;
@@ -48,7 +38,7 @@ async fn create(state: State<AppState>, Json(req): Json<SignUpRequest>) -> impl 
     )))
 }
 
-async fn get_current_user(state: State<AppState>, claims: Claims) -> Result<Json<User>> {
+pub async fn get_current_user(state: State<AppState>, claims: Claims) -> Result<Json<User>> {
     let user = User::get_by_email(&claims.sub, &state.pg_pool)
         .await
         .unwrap();
@@ -56,12 +46,12 @@ async fn get_current_user(state: State<AppState>, claims: Claims) -> Result<Json
     Ok(Json(user))
 }
 
-async fn get_all_users(state: State<AppState>) -> Result<Json<Vec<User>>> {
+pub async fn get_all_users(state: State<AppState>) -> Result<Json<Vec<User>>> {
     let users = User::get_all_users(&state.pg_pool).await;
     Ok(Json(users))
 }
 
-async fn get_user(state: State<AppState>, Path(user_id): Path<Uuid>) -> Result<Json<User>> {
+pub async fn get_user(state: State<AppState>, Path(user_id): Path<Uuid>) -> Result<Json<User>> {
     if let Some(user) = User::get_by_id(user_id, &state.pg_pool).await {
         return Ok(Json(user));
     }

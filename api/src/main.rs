@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, world!" }))
-        .nest("/api/users", routes::user::routes(state));
+        .nest("/api/users", routes::all_routes(state));
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
