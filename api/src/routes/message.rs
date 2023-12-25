@@ -3,4 +3,4 @@ use axum::extract::State;
 
 use crate::AppState;
 
-pub fn new_message(state: State<AppState>, ws: WebSocketUpgrade) {}
+pub fn _new_message(_state: State<AppState>, _ws: WebSocketUpgrade) {}

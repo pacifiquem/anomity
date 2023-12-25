@@ -1,143 +1,107 @@
 mod message;
 mod user;
 
-use std::{borrow::Cow, ops::ControlFlow};
+use std::sync::Arc;
 
 use axum::{
     extract::{
-        ws::{CloseFrame, Message, WebSocket},
-        ConnectInfo, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+        State, WebSocketUpgrade,
     },
-    headers,
+    response::IntoResponse,
     routing::{get, post},
-    Router, TypedHeader,
+    Router,
 };
+
 use futures::{sink::SinkExt, stream::StreamExt};
 pub use message::*;
-use tokio::net::unix::SocketAddr;
 pub use user::*;
 
 use crate::{api::login, AppState};
 
-pub fn all_routes<S>(state: AppState) -> Router<S> {
+pub fn all_routes<S>(state: Arc<AppState>) -> Router<S> {
     Router::new()
         .route("/", get(get_all_users).post(create))
         .route("/:id", get(get_user))
         .route("/login", post(login))
         .route("/me", get(get_current_user))
-        .route("/ws", ws_handler)
+        .route("/websocket", get(ws_handler))
         .with_state(state)
 }
 
-fn ws_handler(
-    ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) {
-    let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
-        user_agent.to_string()
-    } else {
-        String::from("Unknown browser")
-    };
-
-    println!("`{user_agent}` at {:?} connected.", addr);
-
-    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    ws.on_upgrade(|socket| web_socket(socket, state))
 }
 
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
-    if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
-        println!("Pint {:?}...", who);
-    } else {
-        println!("Could not pint {:?}", who);
-        return;
-    }
-
-    for i in 1..5 {
-        if socket
-            .send(Message::Text(format!("Hi {i} times")))
-            .await
-            .is_err()
-        {
-            println!("Client {:?} is abruptly disconnected", who);
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-
+async fn web_socket(socket: WebSocket, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    let mut send_task = tokio::spawn(async move {
-        let n_msg = 20;
+    let mut username = String::new();
 
-        for i in 0..n_msg {
-            if sender
-                .send(Message::Text(format!("Sever message {i}...")))
-                .await
-                .is_err()
-            {
-                return i;
+    while let Some(Ok(message)) = receiver.next().await {
+        if let Message::Text(name) = message {
+            // If username that is sent by client is not taken, fill username string.
+            check_username(&state, &mut username, &name).await;
+
+            if !username.is_empty() {
+                break;
+            } else {
+                let _ = sender
+                    .send(Message::Text(String::from("Username already taken.")))
+                    .await;
+
+                return;
             }
-
-            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         }
+    }
 
-        println!("Sending close to {:?}...", who);
+    let mut rx = state.tx.subscribe();
 
-        if let Err(e) = sender
-            .send(Message::Close(Some(CloseFrame {
-                code: axum::extract::ws::close_code::NORMAL,
-                reason: Cow::from("Goodbye"),
-            })))
-            .await
-        {
-            println!("Could not send close due to {e}, probably it is okay?")
-        }
-        n_msg
-    });
+    let msg = format!("{username} joined.");
 
-    let mut recv_task = tokio::spawn(async move {
-        let mut cnt = 0;
+    tracing::debug!("{msg}");
 
-        while let Some(Ok(msg)) = receiver.next().await {
-            cnt += 1;
+    let _ = state.tx.send(msg);
 
-            if process_message(msg, who).is_break() {
+    // Spawn the first task that will receive broadcast messages and send text
+    // messages over the websocket to our client.
+    let mut send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            if sender.send(Message::Text(msg)).await.is_err() {
                 break;
             }
         }
-        cnt
     });
 
-    tokio::select! {
-        rv_a = (&mut send_task) => {
-            match rv_a {
-                Ok(a) => println!("{a} message sent to {who:?}"),
-                Err(a) => println!("Error sending messages {a:?}")
-            }
-            recv_task.abort();
-        },
-        rv_b = (&mut recv_task) => {
-            match rv_b {
-                Ok(b) => println!("Received {b} message"),
-                Err(b) => println!("Error receiving message {b:?}")
-            }
-            send_task.abort();
-        }
-    }
+    // Clone things we want to pass (move) to the receiving task.
+    let tx = state.tx.clone();
+    let name = username.clone();
 
-    println!("websocket context {who:?} destroyed");
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(Message::Text(text))) = receiver.next().await {
+            let _ = tx.send(format!("{name}: {text}"));
+        }
+    });
+
+    // if one of the tasks run to completion, we abort the other.
+    tokio::select! {
+        _ = (&mut send_task) => recv_task.abort(),
+        _ = (&mut recv_task) => send_task.abort()
+    };
+
+    let msg = format!("{username} left.");
+    tracing::debug!("{msg}");
+
+    let _ = state.tx.send(msg);
+    state.user_set.lock().await.remove(&username);
 }
 
-fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
-    //match msg {
-    //	Message::Text(t) => {
-    //		println!(">> {} sent str: {t:?}", who);
-    //	}
-    //	Message::Binary(d) => {
-    //		println!()
-    //	}
-    //}
+async fn check_username(state: &AppState, string: &mut String, name: &str) {
+    let mut user_set = state.user_set.lock().await;
 
-    ControlFlow::Continue(())
+    if !user_set.contains(name) {
+        user_set.insert(name.to_owned());
+
+        string.push_str(name);
+    }
 }

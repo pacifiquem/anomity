@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     api::{generate_token, hash, KEYS},
     models::{Claims, SignUpRequest, User},
@@ -18,7 +20,10 @@ use validator::Validate;
 use crate::error::Error;
 use crate::Result;
 
-pub async fn create(state: State<AppState>, Json(req): Json<SignUpRequest>) -> impl IntoResponse {
+pub async fn create(
+    state: State<Arc<AppState>>,
+    Json(req): Json<SignUpRequest>,
+) -> impl IntoResponse {
     req.validate()?;
 
     let user = User::get_by_email(&req.email, &state.pg_pool).await;
@@ -38,7 +43,7 @@ pub async fn create(state: State<AppState>, Json(req): Json<SignUpRequest>) -> i
     )))
 }
 
-pub async fn get_current_user(state: State<AppState>, claims: Claims) -> Result<Json<User>> {
+pub async fn get_current_user(state: State<Arc<AppState>>, claims: Claims) -> Result<Json<User>> {
     let user = User::get_by_email(&claims.sub, &state.pg_pool)
         .await
         .unwrap();
@@ -46,12 +51,15 @@ pub async fn get_current_user(state: State<AppState>, claims: Claims) -> Result<
     Ok(Json(user))
 }
 
-pub async fn get_all_users(state: State<AppState>) -> Result<Json<Vec<User>>> {
+pub async fn get_all_users(state: State<Arc<AppState>>) -> Result<Json<Vec<User>>> {
     let users = User::get_all_users(&state.pg_pool).await;
     Ok(Json(users))
 }
 
-pub async fn get_user(state: State<AppState>, Path(user_id): Path<Uuid>) -> Result<Json<User>> {
+pub async fn get_user(
+    state: State<Arc<AppState>>,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<User>> {
     if let Some(user) = User::get_by_id(user_id, &state.pg_pool).await {
         return Ok(Json(user));
     }

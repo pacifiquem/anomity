@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Context};
 use argon2::{
     password_hash::{self, SaltString},
@@ -34,7 +36,10 @@ pub static KEYS: Lazy<Keys> = Lazy::new(|| {
     Keys::new(secret.as_bytes())
 });
 
-pub async fn login(db: State<AppState>, Json(req): Json<SignInRequest>) -> Result<String, Error> {
+pub async fn login(
+    db: State<Arc<AppState>>,
+    Json(req): Json<SignInRequest>,
+) -> Result<String, Error> {
     req.validate()?;
 
     let user = User::get_by_email(&req.email, &db.pg_pool).await;
