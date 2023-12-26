@@ -25,7 +25,7 @@ pub fn all_routes<S>(state: Arc<AppState>) -> Router<S> {
         .route("/:id", get(get_user))
         .route("/login", post(login))
         .route("/me", get(get_current_user))
-        .route("/websocket", get(ws_handler))
+        .route("/ws/:room", get(ws_handler))
         .with_state(state)
 }
 

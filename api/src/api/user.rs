@@ -39,9 +39,6 @@ impl User {
         .execute(pool)
         .await;
 
-        match create {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        create.is_ok()
     }
 }

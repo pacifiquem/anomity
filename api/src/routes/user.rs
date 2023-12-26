@@ -28,7 +28,7 @@ pub async fn create(
 
     let user = User::get_by_email(&req.email, &state.pg_pool).await;
 
-    if let Some(_) = user {
+    if user.is_some() {
         return Err(Error::Conflict("User already exists".to_string()));
     }
 
@@ -63,7 +63,7 @@ pub async fn get_user(
     if let Some(user) = User::get_by_id(user_id, &state.pg_pool).await {
         return Ok(Json(user));
     }
-    return Err(Error::NotFound("User not found".to_string()));
+    Err(Error::NotFound("User not found".to_string()))
 }
 
 #[async_trait]

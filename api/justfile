@@ -1,9 +1,11 @@
 run:
-   cargo watch -q -c -w src/ -x run
-
+	cargo watch -q -c -w src/ -x run
 
 migrate: 
-	sqlx migrate run 
+	sqlx migrate run
+
+clippy: 
+	cargo clippy --fix --allow-dirty 
 
 default:
-    echo 'Hello, world!'
+	@just --list

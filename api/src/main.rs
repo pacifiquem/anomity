@@ -21,7 +21,6 @@ use self::error::Error;
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
 struct AppState {
-    /// The database connection pool
     pg_pool: PgPool,
 
     user_set: Mutex<HashSet<String>>,

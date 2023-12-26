@@ -81,11 +81,11 @@ pub fn generate_token(email: String) -> String {
         exp: (time::OffsetDateTime::now_utc() + time::Duration::weeks(1)).unix_timestamp() as usize,
     };
 
-    let token = encode(&Header::default(), &claims, &KEYS.encoding)
-        .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))
-        .unwrap();
+    
 
-    token
+    encode(&Header::default(), &claims, &KEYS.encoding)
+        .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))
+        .unwrap()
 }
 
 pub async fn hash(password: String) -> anyhow::Result<String> {
