@@ -50,7 +50,7 @@ pub async fn login(
             return Err(Error::Unauthorized("Invalid credentials".to_string()));
         }
 
-        let token = generate_token(user.email);
+        let token = generate_token(user.id);
 
         return Ok(token);
     }
@@ -75,13 +75,11 @@ pub async fn verify(password: String, hash: String) -> anyhow::Result<bool> {
     .context("panic in verify()")?
 }
 
-pub fn generate_token(email: String) -> String {
+pub fn generate_token(id: i32) -> String {
     let claims = Claims {
-        sub: email,
+        sub: id,
         exp: (time::OffsetDateTime::now_utc() + time::Duration::weeks(1)).unix_timestamp() as usize,
     };
-
-    
 
     encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))

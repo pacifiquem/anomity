@@ -8,7 +8,7 @@ use validator::Validate;
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    pub id: Uuid,
+    pub id: i32,
     pub username: String,
     pub email: String,
     pub password: String,
@@ -55,6 +55,6 @@ pub struct SignUpRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Claims {
-    pub sub: String,
+    pub sub: i32,
     pub exp: usize,
 }

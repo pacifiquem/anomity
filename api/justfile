@@ -5,7 +5,10 @@ migrate:
 	sqlx migrate run
 
 clippy: 
-	cargo clippy --fix --allow-dirty 
+	cargo clippy --fix --allow-dirty
+
+prepare: 
+	cargo sqlx prepare 
 
 default:
 	@just --list

@@ -14,7 +14,6 @@ use axum::{
 
 use hyper::http::request::Parts;
 use jsonwebtoken::{decode, Validation};
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::error::Error;
@@ -34,19 +33,13 @@ pub async fn create(
 
     let password_hash = hash(req.password).await?;
 
-    if User::create(&req.email, &req.username, &password_hash, &state.pg_pool).await {
-        return Ok(generate_token(req.email));
-    }
+    let id = User::create(&req.email, &req.username, &password_hash, &state.pg_pool).await;
 
-    Err(Error::UnprocessableEntity(String::from(
-        "Failed to create user",
-    )))
+    return Ok(generate_token(id));
 }
 
 pub async fn get_current_user(state: State<Arc<AppState>>, claims: Claims) -> Result<Json<User>> {
-    let user = User::get_by_email(&claims.sub, &state.pg_pool)
-        .await
-        .unwrap();
+    let user = User::get_by_id(claims.sub, &state.pg_pool).await.unwrap();
 
     Ok(Json(user))
 }
@@ -56,10 +49,7 @@ pub async fn get_all_users(state: State<Arc<AppState>>) -> Result<Json<Vec<User>
     Ok(Json(users))
 }
 
-pub async fn get_user(
-    state: State<Arc<AppState>>,
-    Path(user_id): Path<Uuid>,
-) -> Result<Json<User>> {
+pub async fn get_user(state: State<Arc<AppState>>, Path(user_id): Path<i32>) -> Result<Json<User>> {
     if let Some(user) = User::get_by_id(user_id, &state.pg_pool).await {
         return Ok(Json(user));
     }

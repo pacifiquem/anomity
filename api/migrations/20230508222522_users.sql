@@ -1,7 +1,7 @@
 -- Add migration script here
 -- Add migration script here
 CREATE TABLE users (
-  id       uuid primary key default gen_random_uuid(),
+  id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   email VARCHAR(255) NOT NULL,
   password VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL,
