@@ -1,1 +1,1 @@
-CREATE DATABASE anomity; 
+CREATE DATABASE anomity;

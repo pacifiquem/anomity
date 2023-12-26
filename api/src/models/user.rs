@@ -1,7 +1,6 @@
+use async_session::chrono::FixedOffset;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use sqlx::types::chrono::DateTime as SqlxDateTime;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -9,16 +8,14 @@ use validator::Validate;
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    pub id: Uuid,
+    pub id: i32,
     pub username: String,
     pub email: String,
     pub password: String,
 
-    #[serde_as(as = "Rfc3339")]
-    pub created_at: OffsetDateTime,
+    pub created_at: SqlxDateTime<FixedOffset>,
 
-    #[serde_as(as = "Rfc3339")]
-    pub updated_at: OffsetDateTime,
+    pub updated_at: SqlxDateTime<FixedOffset>,
 }
 
 #[derive(Deserialize, Debug, Validate)]
@@ -58,6 +55,6 @@ pub struct SignUpRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Claims {
-    pub sub: String,
+    pub sub: i32,
     pub exp: usize,
 }

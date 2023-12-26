@@ -1,7 +1,8 @@
-use std::net::SocketAddr;
+use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 
 use anyhow::Context;
 use axum::{routing::get, Router};
+use futures::lock::Mutex;
 use sqlx::PgPool;
 use tokio::signal::unix::SignalKind;
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
@@ -13,18 +14,18 @@ mod models;
 mod routes;
 
 use crate::db::connect_pg;
+use tokio::sync::broadcast;
 
 use self::error::Error;
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
-#[derive(Clone)]
-pub struct AppState {
-    /// The secret to encrypt the JWT
-    pub jwt_secret: String,
+struct AppState {
+    pg_pool: PgPool,
 
-    /// The database connection pool
-    pub pg_pool: PgPool,
+    user_set: Mutex<HashSet<String>>,
+
+    tx: broadcast::Sender<String>,
 }
 
 #[tokio::main]
@@ -43,17 +44,19 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Failed to connect to database")?;
 
-    let jwt_secret = dotenvy::var("JWT_SECRET").context("JWT_SECRET not set")?;
-
     sqlx::migrate!()
         .run(&pg_pool)
         .await
         .context("Failed to run migrations")?;
 
-    let state = AppState {
-        jwt_secret,
+    let user_set = Mutex::new(HashSet::new());
+    let (tx, _rx) = broadcast::channel(100);
+
+    let app_state = Arc::new(AppState {
         pg_pool,
-    };
+        user_set,
+        tx,
+    });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8090));
 
@@ -61,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, world!" }))
-        .nest("/api/users", routes::user::routes(state));
+        .nest("/api/users", routes::all_routes(app_state));
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

@@ -2,5 +2,8 @@
 	"cSpell.words": [
 		"dotenv",
 		"dotenvy"
+	],
+	"rust-analyzer.linkedProjects": [
+		"./api/Cargo.toml"
 	]
 }

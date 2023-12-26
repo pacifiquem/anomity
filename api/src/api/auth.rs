@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Context};
 use argon2::{
     password_hash::{self, SaltString},
@@ -34,7 +36,10 @@ pub static KEYS: Lazy<Keys> = Lazy::new(|| {
     Keys::new(secret.as_bytes())
 });
 
-pub async fn login(db: State<AppState>, Json(req): Json<SignInRequest>) -> Result<String, Error> {
+pub async fn login(
+    db: State<Arc<AppState>>,
+    Json(req): Json<SignInRequest>,
+) -> Result<String, Error> {
     req.validate()?;
 
     let user = User::get_by_email(&req.email, &db.pg_pool).await;
@@ -45,7 +50,7 @@ pub async fn login(db: State<AppState>, Json(req): Json<SignInRequest>) -> Resul
             return Err(Error::Unauthorized("Invalid credentials".to_string()));
         }
 
-        let token = generate_token(user.email);
+        let token = generate_token(user.id);
 
         return Ok(token);
     }
@@ -70,17 +75,15 @@ pub async fn verify(password: String, hash: String) -> anyhow::Result<bool> {
     .context("panic in verify()")?
 }
 
-pub fn generate_token(email: String) -> String {
+pub fn generate_token(id: i32) -> String {
     let claims = Claims {
-        sub: email,
+        sub: id,
         exp: (time::OffsetDateTime::now_utc() + time::Duration::weeks(1)).unix_timestamp() as usize,
     };
 
-    let token = encode(&Header::default(), &claims, &KEYS.encoding)
+    encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| Error::TokenCreation("Failed to create token".to_string()))
-        .unwrap();
-
-    token
+        .unwrap()
 }
 
 pub async fn hash(password: String) -> anyhow::Result<String> {
