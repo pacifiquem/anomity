@@ -4,33 +4,27 @@
   let messages = ["Hello", "World"]
 </script>
 
-{#if $user}
-  <h1 class="font-medium font-sans">Welcome {$user.username}</h1>
+<svelte:head>
+  <title>anomity</title>
+</svelte:head>
 
-  <ul>
+{#if $user}
+  <!--<h1 class="font-medium font-sans">Welcome {$user.username}</h1>-->
+  <!--<ul>
     {#each messages as message}
       <li>{message}</li>
     {/each}
   </ul>
-
-  <form
-    class="h-[20rem] border-blue w-[20rem]"
-    on:submit={(e) => {
-      //@ts-ignore
-      messages = [...messages, e.target[0].value]
-
-      e.preventDefault()
-    }}
-  >
-    <div class="flex gap-3">
-      <textarea class="resize-none p-2 border-gray"></textarea>
-      <input
-        type="submit"
-        value="Submit"
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded border-none cursor-pointer"
-      />
-    </div>
-  </form>
+  <ul>
+    {#each rooms as room}
+      <li>
+        <a href="/{room.id}">{room.name}</a>
+      </li>
+    {/each}
+  </ul>-->
+  <div class="px-8 py-2 font-sans">
+    <p class="text-xl">Select a room to start chatting</p>
+  </div>
 {:else}
   <h2>
     <a href="/login">Login</a>

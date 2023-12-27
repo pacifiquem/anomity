@@ -13,7 +13,7 @@
 >
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="px-4 py-8 shadow sm:rounded-lg sm:px-10">
-      <h2 class="py-6 text-center text-3xl font-extrabold text-gray-900">
+      <h2 class="py-6 text-center text-xl font-medium text-gray-900">
         Sign up to your account
       </h2>
       <form
@@ -80,9 +80,10 @@
           </div>
         </div>
 
-        <!--flex w-full justify-center rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600-->
         <div>
-          <button type="submit" class="bg-black w-full py-2 px-3 border-red-500"
+          <button
+            type="submit"
+            class="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >Sign up</button
           >
         </div>

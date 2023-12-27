@@ -47,7 +47,7 @@ pub async fn login(
     if let Some(user) = user {
         let is_valid = verify(req.password, user.password).await?;
         if !is_valid {
-            return Err(Error::Unauthorized("Invalid credentials".to_string()));
+            return Err(Error::Unauthorized("Invalid email or password".to_string()));
         }
 
         let token = generate_token(user.id);
@@ -55,7 +55,9 @@ pub async fn login(
         return Ok(token);
     }
 
-    Err(Error::Unauthorized(String::from("Invalid credentials")))
+    Err(Error::Unauthorized(String::from(
+        "Invalid email or password",
+    )))
 }
 
 pub async fn verify(password: String, hash: String) -> anyhow::Result<bool> {

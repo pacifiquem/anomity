@@ -14,7 +14,7 @@ export default defineConfig({
 		presetWebFonts({
 			provider: "google",
 			fonts: {
-				sans: "Karla"
+				sans: "DM Sans"
 			}
 		})
 	]

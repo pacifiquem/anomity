@@ -7,7 +7,6 @@ export const actions = {
 	signup: async ({ request, cookies }) => {
 		const formData = await request.formData()
 		
-
 		const signup_response = await fetch(`${BACKEND_BASE_URL}/users`, {
 			method: "POST",
 			headers: {
@@ -28,6 +27,6 @@ export const actions = {
 		})
 
 
-		throw redirect(303, "/")
+		throw redirect(301, "/")
 	}
 } satisfies Actions

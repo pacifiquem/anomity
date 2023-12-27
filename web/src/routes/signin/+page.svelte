@@ -1,7 +1,7 @@
 <script lang="ts">
-  import toast from "svelte-french-toast";
-  import { enhance } from "$app/forms";
-  import { goto } from "$app/navigation";
+  import toast from "svelte-french-toast"
+  import { enhance } from "$app/forms"
+  import { goto } from "$app/navigation"
 </script>
 
 <svelte:head>
@@ -12,8 +12,8 @@
   class="flex min-h-full flex-col justify-center py-12 sm:px-6 lg:px-8 h-screen"
 >
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    <div class="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
-      <h2 class="py-6 text-center text-3xl font-extrabold text-gray-900">
+    <div class="px-4 py-8 shadow sm:rounded-lg sm:px-10">
+      <h2 class="py-6 text-center text-xl font-medium text-gray-900">
         Sign in to your account
       </h2>
       <form
@@ -22,10 +22,10 @@
         method="POST"
         use:enhance={() => {
           return async ({ result }) => {
-            if (result.type === "error") toast.error(result.error.message);
+            if (result.type === "error") toast.error(result.error.message)
 
-            if (result.type === "redirect") goto(result.location);
-          };
+            if (result.type === "redirect") goto(result.location)
+          }
         }}
       >
         <div>
@@ -67,7 +67,7 @@
         <div>
           <button
             type="submit"
-            class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            class="bg-indigo-600 w-full py-1.5 text-white rounded-md"
             >Sign in</button
           >
         </div>

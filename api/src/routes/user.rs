@@ -39,9 +39,13 @@ pub async fn create(
 }
 
 pub async fn get_current_user(state: State<Arc<AppState>>, claims: Claims) -> Result<Json<User>> {
-    let user = User::get_by_id(claims.sub, &state.pg_pool).await.unwrap();
+    let user = User::get_by_id(claims.sub, &state.pg_pool).await;
 
-    Ok(Json(user))
+    if let Some(user) = user {
+        return Ok(Json(user));
+    }
+
+    Err(Error::NotFound("User not found".to_owned()))
 }
 
 pub async fn get_all_users(state: State<Arc<AppState>>) -> Result<Json<Vec<User>>> {
