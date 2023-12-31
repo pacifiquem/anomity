@@ -4,6 +4,8 @@
   import { Toaster } from "svelte-french-toast"
 
   import { user } from "../lib/auth"
+  import { page } from "$app/stores"
+  import { BACKEND_BASE_URL } from "../utils/constants"
 
   export let data
 
@@ -11,17 +13,14 @@
     {
       id: 1,
       name: "Room 1",
-      messages: ["Hello", "World"],
     },
     {
       id: 2,
       name: "Room 2",
-      messages: ["Hello", "World"],
     },
     {
       id: 3,
       name: "Room 3",
-      messages: ["Hello", "World"],
     },
   ]
 
@@ -30,10 +29,9 @@
   let filteredRooms: typeof rooms = []
 
   function handleSearch() {
-    console.log(roomFilterValue)
-    return (filteredRooms = rooms.filter((room) =>
-      room.name.match(roomFilterValue.toLowerCase())
-    ))
+    filteredRooms = rooms.filter((room) =>
+      room.name.toLowerCase().match(roomFilterValue.toLowerCase())
+    )
   }
 </script>
 
@@ -46,23 +44,17 @@
           placeholder="Search"
           class="w-full p-2 border border-gray-300 rounded-md"
           bind:value={roomFilterValue}
-          on:change={handleSearch}
+          on:input={handleSearch}
         />
       </div>
       <ul class="py-4 flex flex-col gap-2">
-        <!--{#each rooms as room}
-          <li>
-            <a class="py-2 bg-gray-300 px-2 rounded-sm block" href="/{room.id}"
-              >{room.name}</a
-            >
-          </li>
-        {/each}-->
-
-        {#if filteredRooms.length > 0}
+        {#if filteredRooms.length}
           {#each filteredRooms as room}
             <li>
               <a
-                class="py-2 bg-gray-300 px-2 rounded-sm block"
+                class={`py-2 bg-gray-300 px-2 rounded-sm block ${
+                  room.id == +$page.params.roomId ? "bg-gray-500" : ""
+                }`}
                 href="/{room.id}">{room.name}</a
               >
             </li>
@@ -71,7 +63,9 @@
           {#each rooms as room}
             <li>
               <a
-                class="py-2 bg-gray-300 px-2 rounded-sm block"
+                class={`py-2 bg-gray-300 px-2 rounded-sm block ${
+                  room.id == +$page.params.roomId ? "bg-gray-500" : ""
+                }`}
                 href="/{room.id}">{room.name}</a
               >
             </li>

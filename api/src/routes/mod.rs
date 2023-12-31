@@ -9,7 +9,7 @@ use axum::{
         State, WebSocketUpgrade,
     },
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 
@@ -21,10 +21,12 @@ use crate::{api::login, AppState};
 
 pub fn all_routes<S>(state: Arc<AppState>) -> Router<S> {
     Router::new()
-        .route("/", get(get_all_users).post(create))
-        .route("/:id", get(get_user))
-        .route("/login", post(login))
-        .route("/me", get(get_current_user))
+        .route("/users", get(get_all_users).post(create))
+        .route("/users/:id", get(get_user))
+        .route("/users/login", post(login))
+        .route("/users/me", get(get_current_user))
+        .route("/rooms", get(get_all_rooms).post(create_room))
+        .route("/rooms/:id", delete(delete_room))
         .route("/ws/:room", get(ws_handler))
         .with_state(state)
 }

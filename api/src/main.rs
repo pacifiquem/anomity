@@ -5,6 +5,7 @@ use axum::{routing::get, Router};
 use futures::lock::Mutex;
 use sqlx::PgPool;
 use tokio::signal::unix::SignalKind;
+//use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 mod api;
@@ -62,9 +63,12 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::debug!("listening on {}", addr);
 
+    //let cors = CorsLayer::new().allow_methods([]).allow_origin(Any);
+
     let app = Router::new()
         .route("/", get(|| async { "Hello, world!" }))
-        .nest("/api/users", routes::all_routes(app_state));
+        .nest("/api", routes::all_routes(app_state));
+    //.layer(cors);
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

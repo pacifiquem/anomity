@@ -6,22 +6,31 @@ const protected_routes = ["/"]
 export const handle: Handle = async ({ event, resolve }) => {
 	const session = event.cookies.get("sessionId")
 
-	const user_request = await fetch(`${BACKEND_BASE_URL}/users/me`, {
-		headers: {
-			Authorization: `Bearer ${session}`
+	try {
+		const user_request = await fetch(`${BACKEND_BASE_URL}/users/me`, {
+			headers: {
+				Authorization: `Bearer ${session}`
+			}
+		})
+	
+	
+		if (user_request.ok) {
+			const user_response = await user_request.json()
+	
+			if (protected_routes.includes(event.url.pathname) && !user_response.id) {
+				throw redirect(303, "/signin")
+			}
+	
+			event.locals.user = user_response
 		}
-	})
+	} catch (error) {
+		if(session) {
+			event.cookies.delete("sessionId", { path: "/" })
 
-
-	if (user_request.ok) {
-		const user_response = await user_request.json()
-
-		if (protected_routes.includes(event.url.pathname) && !user_response.id) {
 			throw redirect(303, "/signin")
 		}
-
-		event.locals.user = user_response
 	}
+	
 
 
 	return resolve(event)

@@ -1,7 +1,6 @@
 use async_session::chrono::FixedOffset;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::DateTime as SqlxDateTime;
-use uuid::Uuid;
 use validator::Validate;
 
 #[serde_with::serde_as]
