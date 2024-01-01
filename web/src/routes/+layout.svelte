@@ -9,6 +9,8 @@
 
   export let data
 
+  console.log({ data })
+
   let rooms = [
     {
       id: 1,
