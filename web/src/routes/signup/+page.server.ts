@@ -17,9 +17,9 @@ export const actions = {
 
 		if (!signup_response.ok) {
 			const response = await signup_response.json()
-			throw  error(400,{
-				message: response.message,
-			})
+			error(400,{
+            				message: response.message,
+            			});
 		}
 			
 		cookies.set("sessionId", await signup_response.text(), {
@@ -27,6 +27,6 @@ export const actions = {
 		})
 
 
-		throw redirect(301, "/")
+		redirect(301, "/");
 	}
 } satisfies Actions

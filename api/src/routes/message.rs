@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use crate::models::{Claims, Room};
+use crate::models::{Claims, Message, Room};
 use crate::AppState;
 
 pub async fn get_all_rooms(state: State<Arc<AppState>>, claims: Claims) -> Json<Vec<Room>> {
@@ -34,4 +34,11 @@ pub async fn delete_room(
     let deleted_room = Room::delete_room(id, claims.sub, &state.pg_pool).await;
 
     Json(deleted_room)
+}
+
+pub async fn _get_messages_by_room_id(
+    state: State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> Json<Vec<Message>> {
+    Json(Message::get_by_room_id(id, &state.pg_pool).await)
 }

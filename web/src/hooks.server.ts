@@ -18,7 +18,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			const user_response = await user_request.json()
 	
 			if (protected_routes.includes(event.url.pathname) && !user_response.id) {
-				throw redirect(303, "/signin")
+				redirect(303, "/signin");
 			}
 	
 			event.locals.user = user_response
@@ -27,7 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if(session) {
 			event.cookies.delete("sessionId", { path: "/" })
 
-			throw redirect(303, "/signin")
+			redirect(303, "/signin");
 		}
 	}
 	

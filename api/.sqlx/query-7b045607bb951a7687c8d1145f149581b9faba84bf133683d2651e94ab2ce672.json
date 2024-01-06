@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM rooms WHERE id=$1 AND user_id=$2",
+  "query": "INSERT INTO rooms_participants(room_id,user_id) VALUES($1,$2)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "5f0a05fa36e57cca8eebafe843f8c60bdf547d66f71bb58838c15aaa7a87dd4b"
+  "hash": "7b045607bb951a7687c8d1145f149581b9faba84bf133683d2651e94ab2ce672"
 }

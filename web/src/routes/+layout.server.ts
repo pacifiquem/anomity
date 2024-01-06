@@ -1,11 +1,10 @@
 import { BACKEND_BASE_URL } from "../utils/constants"
+import {error} from "@sveltejs/kit"
 
 export const load = async ({ locals, cookies }) => {
 	try {
-
 		const sessionId = cookies.get("sessionId")
-		//const user_request = await fetch(`${BACKEND_BASE_URL}/users/me`, {
-
+		
 		const rooms_request = await fetch(`${BACKEND_BASE_URL}/rooms`, {
 			method: "GET",
 			headers: {
@@ -14,12 +13,19 @@ export const load = async ({ locals, cookies }) => {
 		})
 
 		if(rooms_request.ok){
+			const rooms = await rooms_request.json()
+
 			return {
-				rooms: await rooms_request.json(),
+				rooms,
 				user: locals.user
 			}	
 		}
-	} catch (error) {
-		console.log(error)
+
+		return {
+			rooms: [],
+			user: locals.user
+		}
+	} catch (msg) {
+	    throw error(400, "Invalid session")	
 	}
 }

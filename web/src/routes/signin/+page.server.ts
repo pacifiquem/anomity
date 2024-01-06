@@ -17,9 +17,9 @@ export const actions: Actions = {
     });
 
     if (!login_request.ok) {
-      throw error(400, {
-        message: (await login_request.json()).message,
-      });
+      error(400, {
+                message: (await login_request.json()).message,
+              });
     }
 	
 	cookies.set("sessionId", await login_request.text(), {
@@ -29,6 +29,6 @@ export const actions: Actions = {
 		httpOnly: true 
 	})
 
-    throw redirect(301, "/");
+    redirect(301, "/");
   },
 };

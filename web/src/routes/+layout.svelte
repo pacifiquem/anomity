@@ -3,38 +3,23 @@
   import "uno.css"
   import { Toaster } from "svelte-french-toast"
 
-  import { user } from "../lib/auth"
   import { page } from "$app/stores"
-  import { BACKEND_BASE_URL } from "../utils/constants"
+  import type { Room } from "../types/room"
+  import { user } from "$lib/auth"
 
   export let data
 
-  console.log({ data })
-
-  let rooms = [
-    {
-      id: 1,
-      name: "Room 1",
-    },
-    {
-      id: 2,
-      name: "Room 2",
-    },
-    {
-      id: 3,
-      name: "Room 3",
-    },
-  ]
-
-  $: user.set(data.user)
   let roomFilterValue = ""
-  let filteredRooms: typeof rooms = []
+  let createRoomForm = false
+  let filteredRooms: Room[] = []
 
   function handleSearch() {
-    filteredRooms = rooms.filter((room) =>
+    filteredRooms = data.rooms.filter((room: Room) =>
       room.name.toLowerCase().match(roomFilterValue.toLowerCase())
     )
   }
+
+  $: user.set(data.user)
 </script>
 
 {#if data.user}
@@ -49,29 +34,73 @@
           on:input={handleSearch}
         />
       </div>
+
+      <button
+        class="bg-black px-4 w-full py-2 rounded-md text-white mt-2 font-sans"
+        class:bg-red-500={createRoomForm}
+        on:click={() => (createRoomForm = !createRoomForm)}
+        >{createRoomForm ? "Cancel" : "Create room"}</button
+      >
+
+      {#if createRoomForm}
+        <!--{#if form}<p></p>-->
+        <form
+          class="flex flex-col gap-2 mt-2"
+          method="post"
+          action="?/new_room"
+        >
+          <input
+            type="text"
+            name="name"
+            placeholder="Room name"
+            class="p-2 border border-gray-300 rounded-md"
+          />
+          <input
+            type="text"
+            name="description"
+            placeholder="Room description"
+            class="p-2 border border-gray-300 rounded-md"
+          />
+          <button
+            type="submit"
+            class="bg-black px-4 w-full py-2 rounded-md text-white mt-2 font-sans"
+          >
+            Create
+          </button>
+        </form>
+      {/if}
+
       <ul class="py-4 flex flex-col gap-2">
-        {#if filteredRooms.length}
+        {#if roomFilterValue.length}
           {#each filteredRooms as room}
             <li>
               <a
                 class={`py-2 bg-gray-300 px-2 rounded-sm block ${
-                  room.id == +$page.params.roomId ? "bg-gray-500" : ""
+                  room.id == $page.params.roomId
+                    ? "bg-gray-500 text-gray-100"
+                    : ""
                 }`}
                 href="/{room.id}">{room.name}</a
               >
             </li>
           {/each}
         {:else}
-          {#each rooms as room}
+          {#each data.rooms as room}
             <li>
               <a
                 class={`py-2 bg-gray-300 px-2 rounded-sm block ${
-                  room.id == +$page.params.roomId ? "bg-gray-500" : ""
+                  room.id == +$page.params.roomId
+                    ? "bg-gray-500 text-gray-100"
+                    : ""
                 }`}
                 href="/{room.id}">{room.name}</a
               >
             </li>
           {/each}
+        {/if}
+
+        {#if (roomFilterValue.length > 0 && filteredRooms.length == 0) || data.rooms.length == 0}
+          <p class="text-center">No rooms found</p>
         {/if}
       </ul>
     </div>
@@ -79,7 +108,5 @@
       <slot />
     </div>
   </section>
-{:else}
-  <slot />
 {/if}
 <Toaster />

@@ -11,9 +11,7 @@ pub struct User {
     pub username: String,
     pub email: String,
     pub password: String,
-
     pub created_at: SqlxDateTime<FixedOffset>,
-
     pub updated_at: SqlxDateTime<FixedOffset>,
 }
 
@@ -22,7 +20,6 @@ pub struct User {
 pub struct SignInRequest {
     #[validate(email(message = "Email is not valid"))]
     pub email: String,
-
     #[validate(length(
         min = 6,
         max = 32,
@@ -36,14 +33,12 @@ pub struct SignInRequest {
 pub struct SignUpRequest {
     #[validate(email(message = "Email is not valid"))]
     pub email: String,
-
     #[validate(length(
         min = 3,
         max = 32,
         message = "Username must be between 3 and 32 characters long"
     ))]
     pub username: String,
-
     #[validate(length(
         min = 6,
         max = 32,
