@@ -21,9 +21,7 @@ pub async fn create_room(
     claims: Claims,
     Json(req): Json<NewRoom>,
 ) -> Json<Room> {
-    let room_result = Room::create_room(claims.sub, Some(req.name), &state.pg_pool).await;
-
-    Json(room_result)
+    Json(Room::create_room(claims.sub, Some(req.name), &state.pg_pool).await)
 }
 
 pub async fn delete_room(
@@ -31,14 +29,26 @@ pub async fn delete_room(
     claims: Claims,
     Path(id): Path<i32>,
 ) -> Json<Option<Room>> {
-    let deleted_room = Room::delete_room(id, claims.sub, &state.pg_pool).await;
-
-    Json(deleted_room)
+    Json(Room::delete_room(id, claims.sub, &state.pg_pool).await)
 }
 
-pub async fn _get_messages_by_room_id(
+pub async fn get_messages_by_room(
     state: State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> Json<Vec<Message>> {
     Json(Message::get_by_room_id(id, &state.pg_pool).await)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NewMessage {
+    pub room_id: i32,
+    pub message: String,
+}
+
+pub async fn create_message(
+    state: State<Arc<AppState>>,
+    claims: Claims,
+    Json(req): Json<NewMessage>,
+) -> Json<Message> {
+    Json(Message::create(req.room_id, claims.sub, &req.message, &state.pg_pool).await)
 }

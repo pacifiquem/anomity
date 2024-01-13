@@ -1,13 +1,17 @@
 <script lang="ts">
+  import RoomItem from "./RoomItem.svelte"
+
   import "@unocss/reset/tailwind.css"
   import "uno.css"
-  import { Toaster } from "svelte-french-toast"
+  import { Toaster, toast } from "svelte-french-toast"
 
   import { page } from "$app/stores"
+  import { enhance } from "$app/forms"
   import type { Room } from "../types/room"
   import { user } from "$lib/auth"
+  import type { ActionData, PageData } from "./$types"
 
-  export let data
+  export let data: PageData
 
   let roomFilterValue = ""
   let createRoomForm = false
@@ -20,7 +24,17 @@
   }
 
   $: user.set(data.user)
+
+  export let form: ActionData
+
+  if (form?.message) {
+    toast.error(form.message)
+  }
 </script>
+
+<svelte:head>
+  <title>chat</title>
+</svelte:head>
 
 {#if data.user}
   <section class="flex min-h-screen">
@@ -43,23 +57,29 @@
       >
 
       {#if createRoomForm}
-        <!--{#if form}<p></p>-->
         <form
           class="flex flex-col gap-2 mt-2"
-          method="post"
-          action="?/new_room"
+          method="POST"
+          use:enhance
+          action="/?/newRoom"
         >
           <input
             type="text"
             name="name"
             placeholder="Room name"
+            required
+            autocomplete="off"
+            value={form?.name ?? ""}
             class="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
             name="description"
+            required
+            autocomplete="off"
             placeholder="Room description"
             class="p-2 border border-gray-300 rounded-md"
+            value={form?.description ?? ""}
           />
           <button
             type="submit"
@@ -72,30 +92,12 @@
 
       <ul class="py-4 flex flex-col gap-2">
         {#if roomFilterValue.length}
-          {#each filteredRooms as room}
-            <li>
-              <a
-                class={`py-2 bg-gray-300 px-2 rounded-sm block ${
-                  room.id == $page.params.roomId
-                    ? "bg-gray-500 text-gray-100"
-                    : ""
-                }`}
-                href="/{room.id}">{room.name}</a
-              >
-            </li>
+          {#each filteredRooms as room (room.id)}
+            <RoomItem {room} is_active={room.id == $page.params.roomId} />
           {/each}
         {:else}
-          {#each data.rooms as room}
-            <li>
-              <a
-                class={`py-2 bg-gray-300 px-2 rounded-sm block ${
-                  room.id == +$page.params.roomId
-                    ? "bg-gray-500 text-gray-100"
-                    : ""
-                }`}
-                href="/{room.id}">{room.name}</a
-              >
-            </li>
+          {#each data.rooms as room (room.id)}
+            <RoomItem {room} is_active={room.id == $page.params.roomId} />
           {/each}
         {/if}
 

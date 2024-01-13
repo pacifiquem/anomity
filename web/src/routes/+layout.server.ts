@@ -26,6 +26,6 @@ export const load = async ({ locals, cookies }) => {
 			user: locals.user
 		}
 	} catch (msg) {
-	    throw error(400, "Invalid session")	
+		throw error(400, "Invalid session")	
 	}
 }

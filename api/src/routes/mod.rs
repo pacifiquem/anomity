@@ -27,7 +27,8 @@ pub fn all_routes<S>(state: Arc<AppState>) -> Router<S> {
         .route("/users/me", get(get_current_user))
         .route("/rooms", get(get_all_rooms).post(create_room))
         .route("/rooms/:id", delete(delete_room))
-        //.route("/rooms/messages/:id", get(get_messages_by_room_id))
+        .route("/rooms/messages/:id", get(get_messages_by_room))
+        .route("/rooms/messages", post(create_message))
         .route("/ws/:room", get(ws_handler))
         .with_state(state)
 }

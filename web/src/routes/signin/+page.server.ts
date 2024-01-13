@@ -6,7 +6,7 @@ import { dev } from "$app/environment";
 export const ssr = false;
 
 export const actions: Actions = {
-  login: async ({ request, cookies }) => {
+  login: async ({ request, cookies, url }) => {
     const form_data = await request.formData();
     const request_body = Object.fromEntries(form_data.entries());
 
@@ -28,6 +28,10 @@ export const actions: Actions = {
 		sameSite: "strict",
 		httpOnly: true 
 	})
+
+	if(url.searchParams.has("redirectTo")){
+		redirect(303, url.searchParams.get("redirectTo")!)
+	}
 
     redirect(301, "/");
   },

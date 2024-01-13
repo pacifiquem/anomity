@@ -35,7 +35,7 @@ pub async fn create(
 
     let id = User::create(&req.email, &req.username, &password_hash, &state.pg_pool).await;
 
-    return Ok(generate_token(id));
+    Ok(generate_token(id))
 }
 
 pub async fn get_current_user(state: State<Arc<AppState>>, claims: Claims) -> Result<Json<User>> {

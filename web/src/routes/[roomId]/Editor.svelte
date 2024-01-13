@@ -1,33 +1,28 @@
 <script lang="ts">
   //  import { user } from "../lib/auth"
-
-  let messages = ["Hello", "World"]
-
-  let rooms = [
-    {
-      id: 1,
-      name: "Room 1",
-      messages: ["Hello", "World"],
-    },
-    {
-      id: 2,
-      name: "Room 2",
-      messages: ["Hello", "World"],
-    },
-    {
-      id: 3,
-      name: "Room 3",
-      messages: ["Hello", "World"],
-    },
-  ]
+  //  let messages = ["Hello", "World"]
+  //  let _rooms = [
+  //    {
+  //      id: 1,
+  //      name: "Room 1",
+  //      messages: ["Hello", "World"],
+  //    },
+  //    {
+  //      id: 2,
+  //      name: "Room 2",
+  //      messages: ["Hello", "World"],
+  //    },
+  //    {
+  //      id: 3,
+  //      name: "Room 3",
+  //      messages: ["Hello", "World"],
+  //    },
+  //  ]
 </script>
 
 <form
   class="py-4 w-full"
   on:submit={(e) => {
-    //@ts-ignore
-    messages = [...messages, e.target[0].value]
-
     e.preventDefault()
   }}
 >
