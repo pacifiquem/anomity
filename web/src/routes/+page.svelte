@@ -11,8 +11,14 @@
     <p class="text-xl">Select a room to start chatting</p>
   </div>
 {:else}
-  <h2>
-    <a href="/signin">Login</a>
-    <a href="/signup">Signup</a>
-  </h2>
+  <section class="flex justify-center items-center flex-col">
+    <div class="flex justify-center items-center gap-4 h-screen">
+      <a
+        href="/signin"
+        class="bg-indigo-600 px-4 py-2 text-white rounded-sm border-2 border-indigo-500"
+        >SignIn</a
+      >
+      <a href="/signup">Signup</a>
+    </div>
+  </section>
 {/if}

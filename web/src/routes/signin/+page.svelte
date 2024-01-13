@@ -2,6 +2,9 @@
   import toast from "svelte-french-toast"
   import { enhance } from "$app/forms"
   import { goto } from "$app/navigation"
+  import { user } from "$lib/auth"
+
+  if ($user?.id) goto("/")
 </script>
 
 <svelte:head>
@@ -70,6 +73,11 @@
             class="bg-indigo-600 w-full py-1.5 text-white rounded-md"
             >Sign in</button
           >
+        </div>
+
+        <div class="flex gap-1">
+          <p>Don't have an account?</p>
+          <a href="/signup" class="text-indigo-500">Sign up</a>
         </div>
       </form>
     </div>

@@ -3,9 +3,8 @@ use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 use anyhow::Context;
 use axum::{routing::get, Router};
 use futures::lock::Mutex;
-use sqlx::PgPool;
+use sqlx::{PgPool, Pool, Postgres};
 use tokio::signal::unix::SignalKind;
-//use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 mod api;
@@ -23,9 +22,7 @@ pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
 struct AppState {
     pg_pool: PgPool,
-
     user_set: Mutex<HashSet<String>>,
-
     tx: broadcast::Sender<String>,
 }
 
@@ -43,35 +40,23 @@ async fn main() -> anyhow::Result<()> {
 
     let pg_pool = connect_pg()
         .await
-        .context("Failed to connect to database")?;
+        .context("Failed to connect to database")
+        .unwrap();
 
     sqlx::migrate!()
         .run(&pg_pool)
         .await
         .context("Failed to run migrations")?;
 
-    let user_set = Mutex::new(HashSet::new());
-    let (tx, _rx) = broadcast::channel(100);
-
-    let app_state = Arc::new(AppState {
-        pg_pool,
-        user_set,
-        tx,
-    });
-
     let addr = SocketAddr::from(([0, 0, 0, 0], 8090));
 
     tracing::debug!("listening on {}", addr);
 
     //let cors = CorsLayer::new().allow_methods([]).allow_origin(Any);
-
-    let app = Router::new()
-        .route("/", get(|| async { "Hello, world!" }))
-        .nest("/api", routes::all_routes(app_state));
     //.layer(cors);
 
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app(pg_pool).await.into_make_service())
         .with_graceful_shutdown(async {
             let mut sigterm = tokio::signal::unix::signal(SignalKind::terminate()).unwrap();
             let mut sigkill = tokio::signal::unix::signal(SignalKind::interrupt()).unwrap();
@@ -88,3 +73,21 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+async fn app(pg_pool: Pool<Postgres>) -> Router {
+    let user_set = Mutex::new(HashSet::new());
+    let (tx, _rx) = broadcast::channel(100);
+
+    let app_state = Arc::new(AppState {
+        pg_pool,
+        user_set,
+        tx,
+    });
+
+    Router::new()
+        .route("/", get(|| async { "Hello, world!" }))
+        .nest("/api", routes::all_routes(app_state))
+}
+
+#[cfg(test)]
+mod tests;

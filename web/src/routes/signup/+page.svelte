@@ -2,6 +2,9 @@
   import { enhance } from "$app/forms"
   import { goto } from "$app/navigation"
   import toast from "svelte-french-toast"
+  import { user } from "$lib/auth"
+
+  if ($user?.id) goto("/")
 </script>
 
 <svelte:head>
@@ -86,6 +89,10 @@
             class="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >Sign up</button
           >
+        </div>
+        <div class="flex gap-1">
+          <p>Already have an account?</p>
+          <a href="/signin" class="text-indigo-500">Sign in</a>
         </div>
       </form>
     </div>

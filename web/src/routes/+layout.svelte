@@ -109,4 +109,9 @@
     </div>
   </section>
 {/if}
+
+{#if !$user}
+  <slot />
+{/if}
+
 <Toaster />

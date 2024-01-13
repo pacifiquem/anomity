@@ -3,6 +3,8 @@ import { BACKEND_BASE_URL } from "../../utils/constants";
 import type { Actions } from "./$types";
 import { dev } from "$app/environment";
 
+export const ssr = false;
+
 export const actions: Actions = {
   login: async ({ request, cookies }) => {
     const form_data = await request.formData();
@@ -17,9 +19,7 @@ export const actions: Actions = {
     });
 
     if (!login_request.ok) {
-      error(400, {
-                message: (await login_request.json()).message,
-              });
+		error(400, { message: (await login_request.json()).message });
     }
 	
 	cookies.set("sessionId", await login_request.text(), {
