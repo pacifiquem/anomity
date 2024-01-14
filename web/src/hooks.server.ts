@@ -13,7 +13,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}
 		})
 	
-	
 		if (user_request.ok) {
 			const user_response = await user_request.json()
 	
@@ -30,8 +29,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 			redirect(303, "/signin");
 		}
 	}
-	
-
-
 	return resolve(event)
 }
