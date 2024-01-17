@@ -34,11 +34,14 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@sveltejs/adapter-node": "^3.0.0",
 		"@tailwindcss/forms": "^0.5.7",
 		"@unocss/extractor-svelte": "^0.58.0",
 		"@unocss/preset-icons": "^0.58.0",
 		"@unocss/preset-uno": "^0.58.0",
 		"@unocss/reset": "^0.58.0",
+		"socket.io": "^4.7.4",
+		"socket.io-client": "^4.7.4",
 		"svelte-french-toast": "1.2.0",
 		"unocss": "^0.58.0"
 	}

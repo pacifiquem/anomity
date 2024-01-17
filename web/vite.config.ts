@@ -1,15 +1,25 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vitest/config';
 import UnoCSS from 'unocss/vite'
+import { type ViteDevServer, defineConfig } from "vite"
+import { Server } from "socket.io"
 
+const webSocketServer = {
+	name: 'webSocketServer',
+	configureServer(server: ViteDevServer) {
+		if(!server.httpServer) return 
 
+		const io = new Server(server.httpServer)
+
+		io.on("connection", (socket) => {
+			socket.emit("message", "Client connected")
+		})
+	}
+}
 
 export default defineConfig({
 	plugins: [
         UnoCSS(),
-		sveltekit()
-	],
-	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}']
-	}
+		sveltekit(),
+		webSocketServer
+	]
 });
